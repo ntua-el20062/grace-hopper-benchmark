@@ -22,8 +22,8 @@ __global__ void strided_read_kernel(const T *in) {
     const T *target_address = in + tid;
 
     asm volatile (
-        "ld.global.f32 %0, [%1];"
-        : "=f"(local) : "l"(target_address));
+        "ld.global.f64 %0, [%1];"
+        : "=d"(local) : "l"(target_address));
 }
 
 template <typename T, unsigned int STRIDE>

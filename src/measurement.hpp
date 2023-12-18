@@ -2,19 +2,29 @@
 #include <cuda_runtime.h>
 #include <iostream>
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stdout,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
+
 float time_kernel_execution(const void *kernel, int grid_size, int block_size, void **args, size_t shared_memory, cudaStream_t stream) {
     float time;
     cudaEvent_t start, stop;
 
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
+    gpuErrchk( cudaEventCreate(&start) );
+    gpuErrchk( cudaEventCreate(&stop) );
 
-    cudaEventRecord(start, stream);
-    cudaLaunchKernel(kernel, grid_size, block_size, args, shared_memory, stream);
-    cudaEventRecord(stop, stream);
+    gpuErrchk( cudaEventRecord(start, stream) );
+    gpuErrchk( cudaLaunchKernel(kernel, grid_size, block_size, args, shared_memory, stream) );
+    gpuErrchk( cudaEventRecord(stop, stream) );
 
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&time, start, stop);
+    gpuErrchk( cudaEventSynchronize(stop) );
+    gpuErrchk( cudaEventElapsedTime(&time, start, stop) );
 
     return time;
 }

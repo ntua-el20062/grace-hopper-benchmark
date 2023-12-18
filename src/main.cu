@@ -1,13 +1,8 @@
 #include "benchmarks.cu"
+#include "constants.hpp"
 #include <iostream>
 #include <fstream>
 #include <sched.h>
-
-#define RUN_BENCHMARK(FUNCNAME, NITER, ...) {\
-    std::ofstream file("results/" #FUNCNAME ".csv");\
-    for (size_t i = 0; i < NITER; ++i) {\
-        file << FUNCNAME(__VA_ARGS__) << std::endl;\
-    }}
 
 int main() {
     cpu_set_t cpuset;
@@ -25,5 +20,10 @@ int main() {
 
     std::cout << device_count << " devices found" << std::endl;
 
-    RUN_BENCHMARK(contiguous_untouched_float_device_read_benchmark, 11, PAGE_SIZE << 1);
+    for (size_t i = 1024 * 2; i < CPU_L3_CACHE; i *= 2) {
+        RUN_BENCHMARK(contiguous_host_modified_device_write_benchmark, "results/host_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK(contiguous_device_modified_device_write_benchmark, "results/device_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK(contiguous_untouched_device_write_benchmark, "results/untouched/" + std::to_string(i), 11, i);
+    }
+    std::cout << std::endl;
 }

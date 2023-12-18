@@ -1,3 +1,5 @@
+#pragma once
+
 constexpr size_t CPU_CORES = 72;
 
 // ----- smallest power of two that exceeds cache size -----
