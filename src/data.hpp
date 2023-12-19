@@ -2,22 +2,41 @@
 
 constexpr int BLOCK_SIZE = 256;
 
-struct NoopDataInitializer {
-    NoopDataInitializer(void *data, size_t size) {}
+struct NoopInit {
+    NoopInit(void *data, size_t size) {}
 };
 
-struct CacheFlushDataInitializer {
-    CacheFlushDataInitializer(void *data, size_t size) {
+template <size_t STRIDE, typename SUBINITIALIZER = NoopInit>
+struct PointerChaseInit {
+    PointerChaseInit(void *data, size_t size) {
+        static_assert(STRIDE >= sizeof(void *));
+        memset(data, 0, size);
+        char *bytedata = (char *) data;
+        size_t num_hops = size / STRIDE;
+        if (num_hops == 0) {
+            *((void **) data) = nullptr;
+        } else {
+            for (size_t i = 0; i < num_hops - 1; ++i) {
+                *((void **)(bytedata + i * STRIDE)) = (void *) (bytedata + (i + 1) * STRIDE);
+            }
+            *((void **)(bytedata + (num_hops - 1) * STRIDE)) = nullptr;
+        }
+        SUBINITIALIZER subinitializer(data, size);
+    }
+};
+
+struct CacheFlushInit {
+    CacheFlushInit(void *data, size_t size) {
         for (size_t i = 0; i < size / 64; i += 64) {
             _mm_clflush(((char *) data) + i);
         }
     }
 };
 
-struct HostExclusiveDataInitializer : public CacheFlushDataInitializer {
+struct HostExclusiveInit : public CacheFlushInit {
     uint64_t dummy = 0;
 
-    HostExclusiveDataInitializer(void *data, size_t size) : CacheFlushDataInitializer(data, size) {
+    HostExclusiveInit(void *data, size_t size) : CacheFlushInit(data, size) {
         for (size_t i = 0; i < size / sizeof(uint64_t); ++i) {
             dummy += ((uint64_t *) data)[i];
         }
@@ -25,21 +44,21 @@ struct HostExclusiveDataInitializer : public CacheFlushDataInitializer {
 };
 
 
-struct HostModifiedDataInitializer : public CacheFlushDataInitializer {
-    HostModifiedDataInitializer(void *data, size_t size) : CacheFlushDataInitializer(data, size) {
+struct HostModifiedInit : public CacheFlushInit {
+    HostModifiedInit(void *data, size_t size) : CacheFlushInit(data, size) {
         memset(data, 0, size);
     }
 };
 
-struct DeviceExclusiveDataInitializer {
-    DeviceExclusiveDataInitializer(void *data, size_t size) {
+struct DeviceExclusiveInit {
+    DeviceExclusiveInit(void *data, size_t size) {
         strided_read_kernel<double, 1><<<(size / sizeof(double)) / BLOCK_SIZE, BLOCK_SIZE>>>((double *) data);
         cudaDeviceSynchronize();
     }
 };
 
-struct DeviceModifiedDataInitializer {
-    DeviceModifiedDataInitializer(void *data, size_t size) {
+struct DeviceModifiedInit {
+    DeviceModifiedInit(void *data, size_t size) {
         strided_write_kernel<double, 1><<<(size / sizeof(double)) / BLOCK_SIZE, BLOCK_SIZE>>>((double *) data);
         cudaDeviceSynchronize();
     }
@@ -61,7 +80,7 @@ struct ManagedMemoryDataFactory {
 
 template <typename DATA_INITIALIZER>
 struct MallocDataFactory {
-    void *data;
+    void *data = nullptr;
 
     MallocDataFactory(size_t size) {
         data = aligned_alloc(64, size);
@@ -75,7 +94,7 @@ struct MallocDataFactory {
 
 template <typename DATA_INITIALIZER>
 struct CudaMallocDataFactory {
-    void *data = (void *) 0xdeadbeefdeadbeef;
+    void *data = nullptr;
 
     CudaMallocDataFactory(size_t size) {
         cudaMalloc(&data, size);

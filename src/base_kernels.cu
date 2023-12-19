@@ -21,9 +21,7 @@ __global__ void strided_read_kernel(const T *in) {
     T local;
     const T *target_address = in + tid;
 
-    asm volatile (
-        "ld.global.f64 %0, [%1];"
-        : "=d"(local) : "l"(target_address));
+    assert(!*target_address);
 }
 
 template <typename T, unsigned int STRIDE>
@@ -49,5 +47,32 @@ __global__ void pointer_chase_kernel(unsigned long long int *ptr) {
 __global__ void atomic_cas_pointer_chase_kernel(unsigned long long int *ptr) {
     while (ptr) {
         ptr = (unsigned long long int *) atomicCAS(ptr, 0, 0);
+    }
+}
+
+// LAUNCH WITH ONLY ONE BLOCK!
+__global__ void ping_pong_receive_first_kernel(void *to_send, void *received, void *send_buffer, bool *send_canary, void *recv_buffer, bool *recv_canary, size_t buffer_size) {
+    auto tid = cg::this_thread_block().thread_rank();
+
+    if (tid == 0) {
+        while (!*recv_canary) {}
+    }
+
+    __syncthreads();
+
+    for (size_t i = tid; i < buffer_size / sizeof(uint64_t); i += cg::this_thread_block().size()) {
+        ((uint64_t *) received)[i] = ((uint64_t *) recv_buffer)[i];
+    }
+
+    for (size_t i = tid; i < buffer_size / sizeof(uint64_t); i += cg::this_thread_block().size()) {
+        ((uint64_t *) send_buffer)[i] = ((uint64_t *) to_send)[i];
+    }
+
+    cuda::atomic_thread_fence(cuda::memory_order_seq_cst, cuda::thread_scope_system);
+
+    __syncthreads();
+
+    if (tid == 0) {
+        *send_canary = true;
     }
 }
