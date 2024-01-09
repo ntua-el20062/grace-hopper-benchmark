@@ -5,6 +5,7 @@ void strided_write_function(T *out, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         out[i * STRIDE] = 0;
     }
+    asm volatile("" ::: "memory");
 }
 
 template <typename T, unsigned int STRIDE>

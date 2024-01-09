@@ -127,13 +127,13 @@ __global__ void cooperative_parallelism_kernel(int N, int M) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     auto g = cg::this_grid();
 
-    for (int i = tid; i < N; ++i) {
+    for (int i = tid; i < N; i += g.size()) {
         dummy_work();
     }
 
     g.sync();
 
-    for (int i = tid; i < M; ++i) {
+    for (int i = tid; i < M; i += g.size()) {
         dummy_work();
     }
 }

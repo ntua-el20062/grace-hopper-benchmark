@@ -1,16 +1,112 @@
 #include "device_benchmarks.cu"
+#include "hmm_benchmarks.cu"
 #include "host_benchmarks.hpp"
 #include "constants.hpp"
 #include "paradigms/benchmarks.cu"
+#include "atomic_benchmarks.cuh"
+#include "thread_tools.hpp"
 #include <iostream>
 #include <fstream>
 #include <sched.h>
+
+void run_launch_overhead_benchmarks() {
+    for (size_t i = 32; i < 32 << 12; i <<= 1) {
+        RUN_BENCHMARK_RAW(kernel_invocation_benchmark, "results/host/" + std::to_string(i), 101, i, i);
+        RUN_BENCHMARK_RAW(flattened_parallelism_benchmark, "results/flattened/" + std::to_string(i), 101, i, i);
+        RUN_BENCHMARK_RAW(dynamic_parallelism_benchmark, "results/dynamic/" + std::to_string(i), 101, i, i);
+        RUN_BENCHMARK_RAW(cooperative_parallelism_benchmark, "results/cooperative/" + std::to_string(i), 101, i, i);
+    }
+}
+
+void run_managed_memory_benchmarks() {
+    for (size_t i = 2048; i < 1UL << 32; i <<= 1) {
+        RUN_BENCHMARK_THROUGHPUT(contiguous_host_modified_device_read_benchmark, "results/mm/from_host/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(contiguous_device_modified_device_read_benchmark, "results/mm/from_device/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(contiguous_untouched_device_read_benchmark, "results/mm/untouched/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(contiguous_cuda_malloc_untouched_device_read_benchmark, "results/mm/device_mem/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(contiguous_cuda_malloc_device_modified_device_read_benchmark, "results/mm/device_initialized_mem/" + std::to_string(i), 11, i);
+    }
+}
+
+void run_hmm_benchmarks() {
+    for (size_t i = 64; i < 1UL << 32; i <<= 1) {
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_device_modified_device_write_benchmark, "results/hmm/device_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_modified_device_write_benchmark, "results/hmm/host_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_invalidated_device_write_benchmark, "results/hmm/host_invalidated/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_exclusive_device_write_benchmark, "results/hmm/host_exclusive/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_benchmark, "results/hmm/untouched/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(contiguous_cuda_malloc_untouched_device_write_benchmark, "results/hmm/device_mem/" + std::to_string(i), 11, i);
+    }
+}
+
+void run_tiny_benchmarks() {
+    for (size_t i = 64; i < CPU_L3_CACHE << 8; i <<= 1) {
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_single_thread_benchmark, "results/tiny/single/untouched/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_modified_device_write_single_thread_benchmark, "results/tiny/single/host_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_device_modified_device_write_single_thread_benchmark, "results/tiny/single/device_modified/" + std::to_string(i), 11, i);
+    }
+    for (size_t i = 64 * 32; i < CPU_L3_CACHE << 8; i <<= 1) {
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_single_warp_benchmark, "results/tiny/warp/untouched/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_modified_device_write_single_warp_benchmark, "results/tiny/warp/host_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_device_modified_device_write_single_warp_benchmark, "results/tiny/warp/device_modified/" + std::to_string(i), 11, i);
+    }
+    for (size_t i = 64 * 1024; i < CPU_L3_CACHE << 8; i <<= 1) {
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_single_block_benchmark, "results/tiny/block/untouched/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_modified_device_write_single_block_benchmark, "results/tiny/block/host_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_device_modified_device_write_single_block_benchmark, "results/tiny/block/device_modified/" + std::to_string(i), 11, i);
+    }
+    for (size_t i = 64 * (1024 * 264); i < CPU_L3_CACHE << 12; i <<= 1) {
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_full_benchmark, "results/tiny/full/untouched/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_modified_device_write_full_benchmark, "results/tiny/full/host_modified/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_device_modified_device_write_full_benchmark, "results/tiny/full/device_modified/" + std::to_string(i), 11, i);
+    }
+}
+
+void run_host_benchnmarks() {
+    for (size_t i = 8192; i < CPU_L3_CACHE << 4; i <<= 1) {
+        RUN_BENCHMARK_THROUGHPUT(contiguous_invalid_host_write_benchmark, "results/host/invalid_write/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(contiguous_host_modified_host_write_benchmark<0>, "results/host/local_modified_write/" + std::to_string(i), 11, i);
+        RUN_BENCHMARK_THROUGHPUT(contiguous_host_modified_host_write_benchmark<1>, "results/host/other_modified_write/" + std::to_string(i), 11, i);
+    }
+}
+
+void print_device_props() {
+    cudaDeviceProp deviceProperties;
+    cudaGetDeviceProperties(&deviceProperties, 0);
+
+    std::cout << "Device " << 0 << " - " << deviceProperties.name << ":\n";
+    std::cout << "  Compute capability: " << deviceProperties.major << "." << deviceProperties.minor << "\n";
+    std::cout << "  Total global memory: " << deviceProperties.totalGlobalMem << " bytes\n";
+    std::cout << "  Number of streaming multiprocessors: " << deviceProperties.multiProcessorCount << "\n";
+    std::cout << "  Max threads per block: " << deviceProperties.maxThreadsPerBlock << "\n";
+    std::cout << "  Max threads per SM: " << deviceProperties.maxThreadsPerMultiProcessor << "\n";
+    std::cout << "  Max block dimensions: (" << deviceProperties.maxThreadsDim[0] << ", "
+                << deviceProperties.maxThreadsDim[1] << ", " << deviceProperties.maxThreadsDim[2] << ")\n";
+    std::cout << "  Max grid dimensions: (" << deviceProperties.maxGridSize[0] << ", "
+                << deviceProperties.maxGridSize[1] << ", " << deviceProperties.maxGridSize[2] << ")\n";
+    std::cout << "  Warp size: " << deviceProperties.warpSize << "\n";
+    std::cout << "  Memory pitch: " << deviceProperties.memPitch << "\n";
+    std::cout << "  Max shared memory per block: " << deviceProperties.sharedMemPerBlock << " bytes\n";
+    std::cout << "  Total constant memory: " << deviceProperties.totalConstMem << " bytes\n";
+    std::cout << "  Clock rate: " << deviceProperties.clockRate << " kHz\n";
+    std::cout << "  Texture alignment: " << deviceProperties.textureAlignment << "\n";
+    std::cout << "  Device overlap: " << (deviceProperties.deviceOverlap ? "Yes" : "No") << "\n";
+    std::cout << "  Integrated GPU: " << (deviceProperties.integrated ? "Yes" : "No") << "\n";
+    std::cout << "  Concurrent kernels: " << (deviceProperties.concurrentKernels ? "Yes" : "No") << "\n";
+    std::cout << "  ECC enabled: " << (deviceProperties.ECCEnabled ? "Yes" : "No") << "\n";
+    std::cout << "  Memory clock rate: " << deviceProperties.memoryClockRate << " kHz\n";
+    std::cout << "  Memory bus width: " << deviceProperties.memoryBusWidth << " bits\n";
+    std::cout << "  L2 cache size: " << deviceProperties.l2CacheSize << " bytes\n";
+    std::cout << "  Max threads per warp: " << deviceProperties.maxThreadsPerMultiProcessor << "\n";
+    std::cout << "\n";
+}
 
 int main() {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(0, &cpuset);
-    sched_setaffinity(0, sizeof(cpuset), &cpuset);
+    pthread_t current_thread = pthread_self();
+    pthread_setaffinity_np(current_thread, sizeof(cpuset), &cpuset);
 
     if (sched_getcpu() != 0) {
         std::cerr << "Setting CPU affinity failed!" << std::endl;
@@ -22,16 +118,22 @@ int main() {
 
     std::cout << device_count << " devices found" << std::endl;
 
-    for (size_t i = 32; i < 32 << 10; i <<= 1) {
-        // RUN_BENCHMARK(contiguous_host_modified_device_read_benchmark, "results/from_host/" + std::to_string(i), 11, i);
-        // RUN_BENCHMARK(contiguous_device_modified_device_read_benchmark, "results/from_device/" + std::to_string(i), 11, i);
-        // RUN_BENCHMARK(contiguous_untouched_device_read_benchmark, "results/untouched/" + std::to_string(i), 11, i);
-        // RUN_BENCHMARK(contiguous_cuda_malloc_untouched_device_read_benchmark, "results/device_mem/" + std::to_string(i), 11, i);
-        // RUN_BENCHMARK(contiguous_cuda_malloc_device_modified_device_read_benchmark, "results/device_initialized_mem/" + std::to_string(i), 11, i);
-        RUN_BENCHMARK_RAW(kernel_invocation_benchmark, "results/host/" + std::to_string(i), 101, i, i);
-        //RUN_BENCHMARK_RAW(flattened_parallelism_benchmark, "results/flattened/" + std::to_string(i), 101, i, i);
-        RUN_BENCHMARK_RAW(dynamic_parallelism_benchmark, "results/dynamic/" + std::to_string(i), 101, i, i);
-        RUN_BENCHMARK_RAW(cooperative_parallelism_benchmark, "results/cooperative/" + std::to_string(i), 101, i, i);
-    }
-    std::cout << std::endl;
+    init_thread_array();
+    uint8_t *buffer = (uint8_t *) malloc(1 << 12);
+    dispatch_memory_preparation(1, WRITE, buffer, 1 << 12);
+    dispatch_memory_preparation(2, WRITE, buffer, 1 << 12);
+    dispatch_memory_preparation(1, WRITE, buffer, 1 << 12);
+    free(buffer);
+    terminate_threads();
+
+    return 0;
+
+    sleep_test();
+
+    // run_hmm_benchmarks();
+    // run_tiny_benchmarks();
+
+    // RUN_BENCHMARK_RAW(host_ping_device_pong_benchmark, "results/atomic/host_ping_device_pong", 11);
+    // RUN_BENCHMARK_RAW(host_ping_host_pong_benchmark, "results/atomic/host_ping_host_pong", 11);
+    run_host_benchnmarks();
 }
