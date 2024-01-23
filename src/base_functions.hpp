@@ -1,11 +1,55 @@
+#pragma once
+
 #include <cuda/atomic>
 
-template <typename T, unsigned int STRIDE>
-void strided_write_function(T *out, size_t len) {
-    for (size_t i = 0; i < len; ++i) {
-        out[i * STRIDE] = 0;
+alignas(64) volatile uint8_t cacheline_array[64];
+
+__attribute__((always_inline)) inline void cacheline_write_function(uint8_t *out, size_t len) {
+    uint8_t *itr = out;
+    for (size_t i = 0; i < len/(64*16); ++i) {
+        // write after 8 bytes to keep the "next address" intact
+        // then, load the "next address"
+        itr[8] = 0; itr = *((uint8_t **) itr); 
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
+        itr[8] = 0; itr = *((uint8_t **) itr);
     }
-    asm volatile("" ::: "memory");
+    //asm volatile("dmb st" ::: "memory");
+}
+
+__attribute__((always_inline)) inline void cacheline_read_function(uint8_t *in, size_t len) {
+    for (size_t i = 0; i < len/(64*16); ++i) {
+        asm volatile("ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];"
+                     "ldr %0, [%1];" : "=r" (in) : "r" ((uint8_t **) in) :);
+    }
 }
 
 template <typename T, unsigned int STRIDE>

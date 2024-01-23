@@ -1,44 +1,116 @@
 #include "base_functions.hpp"
+#include "thread_tools.hpp"
 
 template <int TID>
-float contiguous_host_modified_host_write_benchmark(size_t n_bytes) {
-    size_t size = n_bytes / sizeof(double);
-    MallocDataFactory<HostModifiedInit<TID>> data_factory(n_bytes);
-    float time = time_function_execution(strided_write_function<double, 1>, (double *) data_factory.data, size);
+double contiguous_host_modified_host_write_benchmark(size_t n_bytes) {
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    dispatch_memory_preparation(TID, WRITE, data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_write_function), data_factory.data, size);
 
     return time;
 }
 
-float contiguous_untouched_host_copy_benchmark(size_t n_bytes) {
-    size_t size = n_bytes / sizeof(double);
-    MallocDataFactory<CacheFlushInit> out_data_factory(n_bytes);
-    MallocDataFactory<CacheFlushInit> in_data_factory(n_bytes);
-    float time = time_function_execution(strided_copy_function<double, 1>, (double *) out_data_factory.data, (double *) in_data_factory.data, size);
+template <int TID>
+double contiguous_host_modified_host_read_benchmark(size_t n_bytes) {
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    dispatch_memory_preparation(TID, WRITE, data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_read_function), data_factory.data, size);
 
     return time;
 }
 
-float contiguous_host_exclusive_host_copy_benchmark(size_t n_bytes) {
-    size_t size = n_bytes / sizeof(double);
-    MallocDataFactory<HostModifiedInit<>> out_data_factory(n_bytes);
-    MallocDataFactory<HostModifiedInit<>> in_data_factory(n_bytes);
-    float time = time_function_execution(strided_copy_function<double, 1>, (double *) out_data_factory.data, (double *) in_data_factory.data, size);
+template <int TID>
+double contiguous_host_shared_host_write_benchmark(size_t n_bytes) {
+    static_assert(TID != 0);
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    dispatch_memory_preparation(0, READ, data_factory.data, n_bytes);
+    dispatch_memory_preparation(TID, READ, data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_write_function), data_factory.data, size);
 
     return time;
 }
 
-float contiguous_untouched_host_write_benchmark(size_t n_bytes) {
-    size_t size = n_bytes / sizeof(double);
+template <int TID>
+double contiguous_host_exclusive_host_write_benchmark(size_t n_bytes) {
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    dispatch_memory_preparation(TID, READ, data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_write_function), data_factory.data, size);
+
+    return time;
+}
+
+template <int TID>
+double contiguous_host_shared_host_read_benchmark(size_t n_bytes) {
+    static_assert(TID != 0);
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    dispatch_memory_preparation(0, READ, data_factory.data, n_bytes);
+    dispatch_memory_preparation(TID, READ, data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_read_function), data_factory.data, size);
+
+    return time;
+}
+
+template <int TID>
+double contiguous_host_exclusive_host_read_benchmark(size_t n_bytes) {
+    static_assert(TID != 0);
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    dispatch_memory_preparation(TID, READ, data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_read_function), data_factory.data, size);
+
+    return time;
+}
+
+double contiguous_untouched_host_write_benchmark(size_t n_bytes) {
+    size_t size = n_bytes;
     MallocDataFactory<NoopInit> data_factory(n_bytes);
-    float time = time_function_execution(strided_write_function<double, 1>, (double *) data_factory.data, size);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    double time = time_function_execution(cacheline_write_function, data_factory.data, size);
 
     return time;
 }
 
-float contiguous_invalid_host_write_benchmark(size_t n_bytes) {
-    size_t size = n_bytes / sizeof(double);
-    MallocDataFactory<CacheFlushInit> data_factory(n_bytes);
-    float time = time_function_execution(strided_write_function<double, 1>, (double *) data_factory.data, size);
+double contiguous_invalid_host_write_benchmark(size_t n_bytes) {
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_write_function), data_factory.data, size);
+
+    return time;
+}
+
+double contiguous_invalid_host_read_benchmark(size_t n_bytes) {
+    size_t size = n_bytes;
+    MallocDataFactory<> data_factory(n_bytes);
+    initialize_memory_pointer_chase(data_factory.data, n_bytes);
+    //invalidate_all(data_factory.data, n_bytes);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, (cacheline_read_function), data_factory.data, size);
 
     return time;
 }

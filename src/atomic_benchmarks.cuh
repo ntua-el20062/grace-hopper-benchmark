@@ -11,44 +11,50 @@
 #define FLAG_B 1
 
 __global__ void device_pong_kernel(cuda::std::atomic<int> &flag) {
-    flag.store(FLAG_A, cuda::std::memory_order_relaxed);
-    for (size_t i = 0; i < 1000; ++i) {
-        while (flag.load(cuda::std::memory_order_relaxed) == FLAG_A);
-        flag.store(FLAG_A, cuda::std::memory_order_relaxed);
+    flag.store(FLAG_A, cuda::std::memory_order_release);
+    for (size_t i = 0; i < 100; ++i) {
+        TIMES10(while (flag.load(cuda::std::memory_order_acquire) == FLAG_A);
+        flag.store(FLAG_A, cuda::std::memory_order_release);)
     }
 }
 
 void host_pong_function(std::atomic<int> &flag) {
-    flag.store(FLAG_A, std::memory_order_relaxed);
-    for (size_t i = 0; i < 1000; ++i) {
-        while (flag.load(std::memory_order_relaxed) == FLAG_A);
-        flag.store(FLAG_A, std::memory_order_relaxed);
+    flag.store(FLAG_A, std::memory_order_release);
+    for (size_t i = 0; i < 100; ++i) {
+        TIMES10(while (flag.load(std::memory_order_acquire) == FLAG_A);
+        flag.store(FLAG_A, std::memory_order_release);)
     }
 }
 
-float host_ping_device_pong_benchmark() {
-    struct timeval start, end;
+__attribute__((always_inline)) inline void host_ping_function(std::atomic<int> &flag) {
+    for (size_t i = 0; i < 100; ++i) {
+        TIMES10(flag.store(FLAG_B, std::memory_order_release);
+        while (flag.load(std::memory_order_acquire) == FLAG_B);)
+    }
+}
 
+__attribute__((always_inline)) inline void host_ping_function(cuda::std::atomic<int> &flag) {
+    for (size_t i = 0; i < 100; ++i) {
+        TIMES10(flag.store(FLAG_B, cuda::std::memory_order_release);
+        while (flag.load(cuda::std::memory_order_acquire) == FLAG_B);)
+    }
+}
+
+double host_ping_device_pong_benchmark() {
     cuda::std::atomic<int> flag{FLAG_B};
 
     device_pong_kernel<<<1, 1>>>(flag);
 
     // synchronize at the start
-    while (flag.load(cuda::std::memory_order_relaxed) == FLAG_B);
+    while (flag.load(cuda::std::memory_order_acquire) == FLAG_B);
 
-    gettimeofday(&start, nullptr);
-    for (size_t i = 0; i < 1000; ++i) {
-        flag.store(FLAG_B, cuda::std::memory_order_relaxed);
-        while (flag.load(cuda::std::memory_order_relaxed) == FLAG_B);
-    }
-    gettimeofday(&end, nullptr);
-
-    return get_elapsed_milliseconds(start, end);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, host_ping_function, flag);
+    
+    return time;
 }
 
-float host_ping_host_pong_benchmark() {
-    struct timeval start, end;
-
+double host_ping_host_pong_benchmark() {
     std::atomic<int> flag{FLAG_B};
 
     std::thread t(host_pong_function, std::ref(flag));
@@ -59,16 +65,12 @@ float host_ping_host_pong_benchmark() {
     pthread_setaffinity_np(t.native_handle(), sizeof(cpu_set_t), &cpuset);
 
     // synchronize at the start
-    while (flag.load(std::memory_order_relaxed) == FLAG_B);
+    while (flag.load(std::memory_order_acquire) == FLAG_B);
 
-    gettimeofday(&start, nullptr);
-    for (size_t i = 0; i < 1000; ++i) {
-        flag.store(FLAG_B, std::memory_order_relaxed);
-        while (flag.load(std::memory_order_relaxed) == FLAG_B);
-    }
-    gettimeofday(&end, nullptr);
+    double time;
+    TIME_FUNCTION_EXECUTION(time, host_ping_function, flag);
 
     t.join();
 
-    return get_elapsed_milliseconds(start, end);
+    return time;
 }

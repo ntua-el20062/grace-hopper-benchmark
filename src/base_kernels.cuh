@@ -2,13 +2,36 @@
 
 #include <cooperative_groups.h>
 #include <cuda.h>
+#include "thread_tools.hpp"
 
 namespace cg = cooperative_groups;
+
+template <typename T>
+__global__ void stream_copy(T *dst, T *src, size_t size) {
+    auto tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    for (auto i = tid; i < size; i += blockDim.x * gridDim.x) {
+        dst[i] = src[i];
+    }
+}
+
+template <typename T>
+__global__ void device_write_kernel(T *a, size_t size) {
+    auto tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    for (auto i = tid; i < size; i += blockDim.x * gridDim.x) {
+        a[i] = 0;
+    }
+}
 
 /**
  * these functions are meant to evaluate typical memory access pattern from device
  * memory should be prepared in advance in such a way that makes these kernels meaningful
  */
+
+__global__ void device_modified_init_kernel(uint8_t *out, size_t len) {
+    dumb_copy(out, out, len);
+}
 
 template <typename T, unsigned int STRIDE>
 __global__ void strided_write_kernel(T *out) {
@@ -17,30 +40,42 @@ __global__ void strided_write_kernel(T *out) {
     out[tid * STRIDE] = 0;
 }
 
-template <typename T>
-__global__ void loopy_write_kernel_clock(T *out, size_t size, clock_t *start, clock_t *end) {
+// template <typename T>
+// __global__ void loopy_write_kernel_clock(T *out, size_t size, clock_t *start, clock_t *end) {
+//     int tid = blockIdx.x * blockDim.x + threadIdx.x;;
+//     int step = blockDim.x * gridDim.x;
+//     clock_t local_start, local_end;
+
+//     local_start = clock();
+
+//     #pragma unroll 16
+//     for (int i = tid; i < size; i += step) {
+//         out[i] = i;
+//     }
+//     local_end = clock();
+
+//     start[tid] = local_start;
+//     end[tid] = local_end;
+// }
+
+__global__ void loopy_write_kernel_clock(uint8_t *out, size_t size, clock_t *start, clock_t *end) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;;
     int step = blockDim.x * gridDim.x;
     clock_t local_start, local_end;
 
+    volatile uint8_t *itr = out;
+    volatile uint8_t *next;
+
     local_start = clock();
 
-    /*
-    for (int i = tid; i < size; i += step) {
-        out[i] = 0;
+    #pragma unroll 8
+    for (size_t i = 0; i < size/64; ++i) {
+        next = *((uint8_t **) itr);
+        *itr = 0;
+        itr = next;
     }
-    */
+    __threadfence_system();
 
-    for (int i = tid; i < size; i += 8 * step) {
-        out[i] = 0;
-        out[i + (1*step)] = 0;
-        out[i + (2*step)] = 0;
-        out[i + (3*step)] = 0;
-        out[i + (4*step)] = 0;
-        out[i + (5*step)] = 0;
-        out[i + (6*step)] = 0;
-        out[i + (7*step)] = 0;
-    }
     local_end = clock();
 
     start[tid] = local_start;

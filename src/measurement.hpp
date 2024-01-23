@@ -3,6 +3,8 @@
 #include <sys/time.h>
 #include <cuda_runtime.h>
 #include <iostream>
+#include <fstream>
+#include <omp.h>
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -14,10 +16,29 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
+// write in GB/s
+void times_to_file(clock_t *times, size_t n_iterations, size_t n_bytes, std::string basepath) {
+    std::ofstream file(basepath + std::to_string(n_bytes));
+    const double freq = 1980000000.;
+    for (size_t i = 0; i < n_iterations; ++i) {
+        double elapsed = (double) times[i] / freq;
+        // double elapsed = times[i] / 1000.;
+        file << (double) n_bytes /  (elapsed * 1000000000.) << std::endl;
+    }
+}
+
+void millisecond_times_to_gb_sec_file(double *times, size_t n_iterations, size_t n_bytes, std::string path) {
+    std::ofstream file(path);
+    for (size_t i = 0; i < n_iterations; ++i) {
+        double elapsed = times[i] / 1000.;
+        file << (double) n_bytes /  (elapsed * 1000000000.) << std::endl;
+    }
+}
+
 #define RUN_BENCHMARK_THROUGHPUT(FUNCNAME, OUTNAME, NITER, BYTES) {\
-    float measurements[NITER];\
+    double measurements[NITER];\
     for (size_t __i = 0; __i < NITER; ++__i) {\
-        measurements[__i] = ((float) BYTES / (1000.f * 1000.f)) / FUNCNAME(BYTES);\
+        measurements[__i] = ((double) BYTES / (1000. * 1000.)) / FUNCNAME(BYTES);\
     }\
     std::ofstream file(OUTNAME);\
     for (size_t __i = 0; __i < NITER; ++__i) {\
@@ -25,7 +46,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
     }}
 
 #define RUN_BENCHMARK_RAW(FUNCNAME, OUTNAME, NITER, ...) {\
-    float measurements[NITER];\
+    double measurements[NITER];\
     for (size_t __i = 0; __i < NITER; ++__i) {\
         measurements[__i] = FUNCNAME(__VA_ARGS__);\
     }\
@@ -34,24 +55,44 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
         file << measurements[__i] << std::endl;\
     }}
 
-float time_kernel_execution(const void *kernel, int grid_size, int block_size, void **args, size_t shared_memory, cudaStream_t stream) {
+#define RUN_BENCHMARK_LATENCY(FUNCNAME, OUTNAME, NITER, ELEMS, ...) {\
+    double measurements[NITER];\
+    for (size_t __i = 0; __i < NITER; ++__i) {\
+        measurements[__i] = FUNCNAME(__VA_ARGS__) / (double) ELEMS;\
+    }\
+    std::ofstream file(OUTNAME);\
+    for (size_t __i = 0; __i < NITER; ++__i) {\
+        file << measurements[__i] << std::endl;\
+    }}
+
+double time_kernel_execution(const void *kernel, int grid_size, int block_size, void **args, size_t shared_memory, cudaStream_t stream) {
     float time;
     cudaEvent_t start, stop;
 
-    gpuErrchk( cudaEventCreate(&start) );
-    gpuErrchk( cudaEventCreate(&stop) );
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 
-    gpuErrchk( cudaEventRecord(start, stream) );
-    gpuErrchk( cudaLaunchKernel(kernel, grid_size, block_size, args, shared_memory, stream) );
-    gpuErrchk( cudaEventRecord(stop, stream) );
+    cudaEventRecord(start, stream);
+    cudaLaunchKernel(kernel, grid_size, block_size, args, shared_memory, stream);
+    cudaEventRecord(stop, stream);
 
-    gpuErrchk( cudaEventSynchronize(stop) );
-    gpuErrchk( cudaEventElapsedTime(&time, start, stop) );
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&time, start, stop);
 
-    return time;
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
+    return (double) time;
 }
 
-float time_kernel_execution_clock(const void *kernel, int grid_size, int block_size, void **args, size_t n_args, size_t times_size, size_t shared_memory, cudaStream_t stream) {
+int get_gpu_clock_khz() {
+    cudaDeviceProp deviceProperties;
+    cudaGetDeviceProperties(&deviceProperties, 0);
+
+    return deviceProperties.clockRate;
+}
+
+double time_kernel_execution_clock(const void *kernel, int grid_size, int block_size, void **args, size_t n_args, size_t times_size, size_t shared_memory, cudaStream_t stream) {
     clock_t *device_start, *device_stop;
     clock_t *start, *stop;
 
@@ -85,10 +126,7 @@ float time_kernel_execution_clock(const void *kernel, int grid_size, int block_s
         }
     }
 
-    cudaDeviceProp deviceProperties;
-    cudaGetDeviceProperties(&deviceProperties, 0);
-
-    float time = (float) (max_stop - min_start) / ((float) deviceProperties.clockRate);
+    double time = (double) (max_stop - min_start) / ((double) get_gpu_clock_khz());
 
     cudaFree(device_start);
     cudaFree(device_stop);
@@ -98,7 +136,7 @@ float time_kernel_execution_clock(const void *kernel, int grid_size, int block_s
     return time;
 }
 
-float time_cooperative_kernel_execution(const void *kernel, void **args, size_t shared_memory, cudaStream_t stream) {
+double time_cooperative_kernel_execution(const void *kernel, void **args, size_t shared_memory, cudaStream_t stream) {
     float time;
     cudaEvent_t start, stop;
 
@@ -106,24 +144,27 @@ float time_cooperative_kernel_execution(const void *kernel, void **args, size_t 
 
     cudaOccupancyMaxPotentialBlockSize(&grid_size, &block_size, kernel);
 
-    gpuErrchk( cudaEventCreate(&start) );
-    gpuErrchk( cudaEventCreate(&stop) );
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 
-    gpuErrchk( cudaEventRecord(start, stream) );
-    gpuErrchk( cudaLaunchCooperativeKernel(kernel, grid_size, block_size, args, shared_memory, stream) );
-    gpuErrchk( cudaEventRecord(stop, stream) );
+    cudaEventRecord(start, stream);
+    cudaLaunchCooperativeKernel(kernel, grid_size, block_size, args, shared_memory, stream);
+    cudaEventRecord(stop, stream);
 
-    gpuErrchk( cudaEventSynchronize(stop) );
-    gpuErrchk( cudaEventElapsedTime(&time, start, stop) );
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&time, start, stop);
 
-    return time;
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
+    return (double) time;
 }
 
-float get_elapsed_milliseconds(struct timeval start, struct timeval end) {
-    return (float) (end.tv_usec - start.tv_usec) / 1000.f + (float) (end.tv_sec - start.tv_sec) * 1000.f;
+double get_elapsed_milliseconds(struct timeval start, struct timeval end) {
+    return (double) (end.tv_usec - start.tv_usec) / 1000. + (double) (end.tv_sec - start.tv_sec) * 1000.;
 }
 
-__always_inline uint64_t get_cpu_freq() {
+__attribute__((always_inline)) inline uint64_t get_cpu_freq() {
     uint64_t freq;
 
     asm volatile("mrs %0, cntfrq_el0" : "=r"(freq));
@@ -131,7 +172,7 @@ __always_inline uint64_t get_cpu_freq() {
     return freq;
 }
 
-__always_inline uint64_t get_cpu_clock() {
+__attribute__((always_inline)) inline uint64_t get_cpu_clock() {
     uint64_t tsc;
 
     asm volatile("isb" : : : "memory");
@@ -140,28 +181,107 @@ __always_inline uint64_t get_cpu_clock() {
     return tsc;
 }
 
-float get_elapsed_milliseconds_clock(uint64_t start, uint64_t end) {
-    float freq = (float) get_cpu_freq();
+double clock_to_milliseconds(uint64_t c) {
+    double freq = (double) get_cpu_freq();
 
-    return ((float)(end - start - 32)) / (freq / 1000.f);
+    return ((double)(c)) / (freq / 1000.);
+
 }
+
+double get_elapsed_milliseconds_clock(uint64_t start, uint64_t end) {
+    return clock_to_milliseconds(end - start);
+}
+
+void clock_granularity_test() {
+    std::ofstream file("results/clock_granularity");
+    for (size_t i = 0; i < 1000000; ++i) {
+        uint64_t start_clock = get_cpu_clock();
+        uint64_t end_clock = get_cpu_clock();
+        file << end_clock - start_clock << std::endl;
+    }
+}
+
+__global__ void clock_granularity_kernel(clock_t *out) {
+    for (size_t i = 0; i < 1000000; ++i) {
+        clock_t start_clock = clock();
+        clock_t end_clock = clock();
+        out[i] = end_clock - start_clock;
+    }
+}
+
+void device_clock_granularity_test() {
+    std::ofstream file("results/device_clock_granularity");
+    clock_t *times = (clock_t *) malloc(1000000 * sizeof(clock_t));
+    clock_granularity_kernel<<<1, 1>>>(times);
+    cudaDeviceSynchronize();
+    for (size_t i = 0; i < 1000000; ++i) {
+        file << times[i] << std::endl;
+    }
+    free(times);
+}
+
 
 void sleep_test() {
-    uint64_t oh_start_clock = get_cpu_clock();
-    uint64_t oh_end_clock = get_cpu_clock();
+    clock_granularity_test();
+    device_clock_granularity_test();
 
     uint64_t start_clock = get_cpu_clock();
-    sleep(1);
     uint64_t end_clock = get_cpu_clock();
+    std::cout << "[INFO] overhead of cycles: " << end_clock - start_clock << std::endl;
 
-    std::cout << "target 1000.0, elapsed: " << get_elapsed_milliseconds_clock(start_clock, end_clock) << " with overhead of cycles: " << oh_end_clock - oh_start_clock << std::endl;
+    start_clock = get_cpu_clock();
+    sleep(1);
+    end_clock = get_cpu_clock();
+
+    std::cout << "[INFO] CPU timer runs at " << (double) get_cpu_freq() / 1000000. << "MHz" << std::endl;
+    std::cout << "[INFO] GPU timer runs at " << (double) get_gpu_clock_khz() / 1000. << "MHz" << std::endl;
+    std::cout << "[INFO] target 1000.0, elapsed: " << get_elapsed_milliseconds_clock(start_clock, end_clock) << std::endl;
+    
+    start_clock = get_cpu_clock();
+    asm volatile("mov x0, #10000;"
+                 "mov x1, #0;"
+                 "_EMPTY_LOOP_TAG:;"
+                 "add     x1, x1, #0x1;"
+                 "cmp     x1, x0;"
+                 "b.ne    _EMPTY_LOOP_TAG;" ::: "x0", "x1");
+    end_clock = get_cpu_clock();
+
+    std::cout << "[INFO] loop iteration overhead: " << get_elapsed_milliseconds_clock(start_clock, end_clock) * 100. << "ns (" << (double) (end_clock - start_clock) / 10000 << " cycles)" << std::endl;
 }
 
+#define TIME_FUNCTION_EXECUTION(TIME, FUNC, ...) {\
+    uint64_t __start = get_cpu_clock();\
+    FUNC(__VA_ARGS__);\
+    uint64_t __end = get_cpu_clock();\
+    TIME = get_elapsed_milliseconds_clock(__start, __end);}
+
 template <typename FUNCTYPE, typename... ARGTYPES>
-float time_function_execution(FUNCTYPE f, ARGTYPES... args) {
+double time_function_execution(FUNCTYPE f, ARGTYPES... args) {
     uint64_t start = get_cpu_clock();
     f(args...);
     uint64_t end = get_cpu_clock();
 
     return get_elapsed_milliseconds_clock(start, end);
 }
+
+#define GENERIC_SYNC(__TARGET, ID, FUNC, DELAY)\
+    uint64_t __CHECK;\
+    if (ID == 0) {\
+        __CHECK = FUNC() + DELAY;\
+        *__TARGET = __CHECK;\
+    } else {\
+        do {\
+            __CHECK = *__TARGET;\
+        } while (__CHECK == 0);\
+    }\
+    while (FUNC() < __CHECK);\
+
+#define KERNEL_SYNC(__TARGET) GENERIC_SYNC(__TARGET, (threadIdx.x + blockDim.x * blockIdx.x), clock, ((1900000/7)*7));
+#define OMP_SYNC(__TARGET) GENERIC_SYNC(__TARGET, (omp_get_thread_num()), get_cpu_clock, ((1000000/32)*32));
+
+#define GENERIC_MEASURE(__TARGET, ID, FUNC)\
+    auto __TIME = FUNC();\
+    __TARGET[ID] = __TIME - __CHECK;
+
+#define KERNEL_MEASURE(__TARGET) GENERIC_MEASURE(__TARGET, (threadIdx.x + blockDim.x * blockIdx.x), clock)
+#define OMP_MEASURE(__TARGET) GENERIC_MEASURE(__TARGET, (omp_get_thread_num()), get_cpu_clock)

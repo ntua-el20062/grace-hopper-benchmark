@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef __x86_64__
 #include <immintrin.h>
 #endif
@@ -5,6 +7,12 @@
 #include <mutex>
 #include <thread>
 #include "thread_tools.hpp"
+#include <algorithm>
+#include <random>
+#include "random.hpp"
+#include <sys/mman.h>
+
+#define CEIL(a, b) (((a)+(b)-1)/(b))
 
 constexpr int BLOCK_SIZE = 256;
 
@@ -35,14 +43,9 @@ struct PointerChaseInit {
 
 struct CacheFlushInit {
     CacheFlushInit(void *data, size_t size) {
-        // memset(data, 0xff, size);
         for (size_t i = 0; i < size; i += 64) {
             char *cur_line = ((char *) data) + i;
-#ifdef __x86_64__
-            _mm_clflush(cur_line);
-#else
             asm volatile("dc civac, %0" : : "r"(cur_line) : "memory");
-#endif
         }
         asm volatile("" ::: "memory");
     }
@@ -126,18 +129,16 @@ struct DeviceExclusiveInit {
 
 struct DeviceModifiedInit {
     DeviceModifiedInit(void *data, size_t size) {
-        strided_write_kernel<double, 1><<<(size / sizeof(double)) / BLOCK_SIZE, BLOCK_SIZE>>>((double *) data);
+        device_modified_init_kernel<<<1, 1>>>((uint8_t *) data, size);
         cudaDeviceSynchronize();
     }
 };
 
-template <typename DATA_INITIALIZER>
 struct ManagedMemoryDataFactory {
-    void *data = nullptr;
+    uint8_t *data = nullptr;
 
     ManagedMemoryDataFactory(size_t size) {
         cudaMallocManaged(&data, size);
-        DATA_INITIALIZER initializer(data, size);
     }
 
     ~ManagedMemoryDataFactory() {
@@ -145,12 +146,44 @@ struct ManagedMemoryDataFactory {
     }
 };
 
-template <typename DATA_INITIALIZER>
+void initialize_memory_pointer_chase(uint8_t *data, size_t size) {
+    size_t num_pages = CEIL(size, PAGE_SIZE);
+
+    size_t page_sequence[num_pages];
+    page_sequence[0] = 0; // first page is the first page
+    _random_init(0, num_pages - 1);
+
+    for (size_t i = 1; i < num_pages; ++i) {
+        page_sequence[i] = _random() + 1;
+    }
+
+    for (size_t i = 0; i < num_pages; ++i) {
+        size_t page_offset = PAGE_SIZE * page_sequence[i];
+        uint8_t *page_base = data + page_offset;
+        uint8_t *itr = page_base;
+        size_t num_cachelines = std::min(size - page_offset, PAGE_SIZE) / CACHELINE_SIZE;
+        _random_init(0, num_cachelines - 1);
+        for (size_t j = 0; j < num_cachelines - 1; ++j) {
+            uint8_t *new_addr = page_base + (_random() + 1) * CACHELINE_SIZE;
+            *((uint8_t **) itr) = new_addr;
+            itr = new_addr;
+        }
+        if (i < num_pages - 1) {
+            // set the last cacheline to point to the next page in the sequence
+            *((uint8_t **) itr) = data + PAGE_SIZE * page_sequence[i + 1];
+        }
+    }
+
+    invalidate_all(data, size);
+}
+
+template <typename DATA_INITIALIZER = NoopInit>
 struct MallocDataFactory {
-    void *data = nullptr;
+    uint8_t *data = nullptr;
 
     MallocDataFactory(size_t size) {
-        data = aligned_alloc(128, size);
+        data = (uint8_t *) aligned_alloc(64, size);
+        assert((size_t) data % 64 == 0);
         DATA_INITIALIZER initializer(data, size);
     }
 
@@ -159,9 +192,23 @@ struct MallocDataFactory {
     }
 };
 
-template <typename DATA_INITIALIZER>
+struct MmapDataFactory {
+    uint8_t *data = nullptr;
+    size_t size = 0;
+
+    MmapDataFactory(size_t n_bytes) {
+        size = n_bytes;
+        data = (uint8_t *) mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    }
+
+    ~MmapDataFactory() {
+        munmap(data, size);
+    }
+};
+
+template <typename DATA_INITIALIZER = NoopInit>
 struct CudaMallocDataFactory {
-    void *data = nullptr;
+    uint8_t *data = nullptr;
 
     CudaMallocDataFactory(size_t size) {
         cudaMalloc(&data, size);
@@ -170,5 +217,17 @@ struct CudaMallocDataFactory {
 
     ~CudaMallocDataFactory() {
         cudaFree(data);
+    }
+};
+
+struct CudaMallocHostDataFactory {
+    uint8_t *data = nullptr;
+
+    CudaMallocHostDataFactory(size_t size) {
+        cudaMallocHost(&data, size);
+    }
+
+    ~CudaMallocHostDataFactory() {
+        cudaFreeHost(data);
     }
 };
