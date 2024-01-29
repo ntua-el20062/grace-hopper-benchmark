@@ -17,8 +17,8 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 // write in GB/s
-void times_to_file(clock_t *times, size_t n_iterations, size_t n_bytes, std::string basepath) {
-    std::ofstream file(basepath + std::to_string(n_bytes));
+void times_to_file(clock_t *times, size_t n_iterations, size_t n_bytes, std::string path) {
+    std::ofstream file(path);
     const double freq = 1980000000.;
     for (size_t i = 0; i < n_iterations; ++i) {
         double elapsed = (double) times[i] / freq;
@@ -32,6 +32,14 @@ void millisecond_times_to_gb_sec_file(double *times, size_t n_iterations, size_t
     for (size_t i = 0; i < n_iterations; ++i) {
         double elapsed = times[i] / 1000.;
         file << (double) n_bytes /  (elapsed * 1000000000.) << std::endl;
+    }
+}
+
+void millisecond_times_to_latency_ns_file(double *times, size_t n_iterations, size_t n_elems, std::string path) {
+    std::ofstream file(path);
+    for (size_t i = 0; i < n_iterations; ++i) {
+        double elapsed_ns = times[i] * 1000000.;
+        file << elapsed_ns / n_elems << std::endl;
     }
 }
 
@@ -274,9 +282,9 @@ double time_function_execution(FUNCTYPE f, ARGTYPES... args) {
             __CHECK = *__TARGET;\
         } while (__CHECK == 0);\
     }\
-    while (FUNC() < __CHECK);\
+    while (FUNC() < __CHECK);
 
-#define KERNEL_SYNC(__TARGET) GENERIC_SYNC(__TARGET, (threadIdx.x + blockDim.x * blockIdx.x), clock, ((1900000/7)*7));
+#define KERNEL_SYNC(__TARGET) GENERIC_SYNC(__TARGET, (threadIdx.x + blockDim.x * blockIdx.x), clock, ((1980000/7)*7));
 #define OMP_SYNC(__TARGET) GENERIC_SYNC(__TARGET, (omp_get_thread_num()), get_cpu_clock, ((1000000/32)*32));
 
 #define GENERIC_MEASURE(__TARGET, ID, FUNC)\
@@ -285,3 +293,27 @@ double time_function_execution(FUNCTYPE f, ARGTYPES... args) {
 
 #define KERNEL_MEASURE(__TARGET) GENERIC_MEASURE(__TARGET, (threadIdx.x + blockDim.x * blockIdx.x), clock)
 #define OMP_MEASURE(__TARGET) GENERIC_MEASURE(__TARGET, (omp_get_thread_num()), get_cpu_clock)
+
+#ifdef _OPENMP
+#define MEASURE_CPU_LOOP_AND_RETURN(LOOP) {\
+    volatile uint64_t TIMES[n_threads];\
+    TIMES[0] = 0;\
+_Pragma("omp parallel num_threads(n_threads)")\
+    {\
+        OMP_SYNC(TIMES);\
+        _Pragma("omp for")\
+        LOOP\
+        OMP_MEASURE(TIMES);\
+    }\
+    volatile uint64_t OUT_TIME = TIMES[0];\
+    for (size_t i = 0; i < n_threads; ++i) {\
+        OUT_TIME = std::max(OUT_TIME, TIMES[i]);\
+    }\
+    return clock_to_milliseconds(OUT_TIME);}
+#else
+#define MEASURE_CPU_LOOP_AND_RETURN(LOOP) {\
+    auto START = get_cpu_clock();\
+    LOOP\
+    auto OUT_TIME = get_cpu_clock() - START;\
+    return clock_to_milliseconds(OUT_TIME);}
+#endif

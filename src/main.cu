@@ -8,9 +8,9 @@
 #include <iostream>
 #include <fstream>
 #include <sched.h>
-#include "page_migration.hpp"
 #include "stream.hpp"
-#include "write.hpp"
+#include "read_write_copy.hpp"
+#include "latency.hpp"
 
 void run_launch_overhead_benchmarks() {
     for (size_t i = 32; i < 32 << 12; i <<= 1) {
@@ -102,13 +102,6 @@ void run_host_read_benchmarks() {
     }
 }
 
-void run_page_migration_benchmark() {
-    for (size_t i = 4096; i < 1UL << 28; i = (size_t)((double) i * sqrt(sqrt(2)))) {
-        i = CEIL(i, 64) * 64;
-        page_migration_benchmark(i, 10);
-    }
-}
-
 void print_device_props() {
     cudaDeviceProp deviceProperties;
     cudaGetDeviceProperties(&deviceProperties, 0);
@@ -141,14 +134,11 @@ void print_device_props() {
 }
 
 int main() {
-#ifndef _OPENMP
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(0, &cpuset);
     pthread_t current_thread = pthread_self();
     pthread_setaffinity_np(current_thread, sizeof(cpuset), &cpuset);
-
-
 
     if (sched_getcpu() != 0) {
         std::cerr << "Setting CPU affinity failed!" << std::endl;
@@ -156,9 +146,23 @@ int main() {
     } else {
         std::cout << "[INFO] thread pinning works" << std::endl;
     }
-#else
-    std::cout << "[INFO] running omp with threads: " << omp_get_max_threads() << std::endl;
-#endif
+    // OLD OPENMP CODE
+    // //std::cout << "[INFO] default omp threads: " << omp_get_max_threads() << std::endl;
+    // omp_set_num_threads(64);
+    // std::cout << "[INFO] running omp with threads: " << omp_get_max_threads() << std::endl;
+    // #pragma omp parallel
+    // {
+    //     cpu_set_t mask;
+    //     CPU_ZERO(&mask);
+    //     sched_getaffinity(0, sizeof(mask), &mask);
+    //     for (int i = 0; i < CPU_SETSIZE; ++i) {
+    //         if (CPU_ISSET(i, &mask)) {
+    //             printf("(%d %d)", omp_get_thread_num(), i);
+    //             break;
+    //         }
+    //     }
+    // }
+    // printf("\n");
 
     int device_count = 0;
     cudaGetDeviceCount(&device_count);
@@ -172,22 +176,38 @@ int main() {
     
     sleep_test();
 
-#ifndef _OPENMP
     init_thread_array();
-#endif
-    //run_hmm_benchmarks();
-    //run_tiny_benchmarks();
-
-    // run_host_read_benchmarks();
-    //run_host_write_benchmarks();
-    // run_page_migration_benchmark();
-
     // run_stream_benchmark_device(1UL << 32, 5, 1);
-    // run_write_tests_device(5, 1UL << 31, 1);
-    run_read_tests_host(5, 1UL << 31);
+    for (size_t i = 4096; i <= 1UL << 31; i = (size_t)((double) i * sqrt(sqrt(2)))) {
+        i = CEIL(i, 64) * 64;
+        std::cout << i << std::endl;
+        // run_read_tests_device(10, i, 0, "", std::to_string(i));
+        // run_write_tests_device(10, i, 0, "", std::to_string(i));
+        // run_read_tests_host(10, i, 64, "", std::to_string(i));
+        // run_write_tests_host(10, i, 64, "", std::to_string(i));
+        // run_copy_tests_device(10, i, 264, "", std::to_string(i));
+        // run_copy_tests_host(10, i, 64, "", std::to_string(i));
+    }
+    // run_latency_test_host<true>(1000, 1UL << 31);
+    // run_latency_test_device<true>(1000, 1UL << 31);
+    // run_latency_test_host<false>(1000, 33554432);
+    // run_latency_test_device<false>(1000, 33554432);
     // run_stream_benchmark_host(5, 1UL << 32);
 
-#ifndef _OPENMP
+
+    // ------------- HOST SCALABILITY -------------
+    for (size_t n_threads = 1; n_threads <= 64; ++n_threads) {
+        run_read_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
+        run_write_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
+        // run_copy_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
+    }
+
+    // ------------- DEVICE SCALABILITY -------------
+    for (size_t n_blocks = 1; n_blocks <= 264; ++n_blocks) {
+        run_read_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
+        run_write_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
+        // run_copy_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
+    }
+
     terminate_threads();
-#endif
 }

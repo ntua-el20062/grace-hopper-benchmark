@@ -3,7 +3,7 @@
 #include "data.hpp"
 #include "measurement.hpp"
 
-template <typename DST_ALLOC, typename SRC_ALLOC>
+template <typename SRC_ALLOC, typename DST_ALLOC>
 void stream_test_device_template(size_t n_bytes, size_t n_iter, int grid_size, size_t src_target, ThreadCommand src_mode, size_t dst_target, ThreadCommand dst_mode, std::string name) {
     double times[n_iter];
     size_t per_array_bytes = n_bytes / 2;
@@ -12,8 +12,8 @@ void stream_test_device_template(size_t n_bytes, size_t n_iter, int grid_size, s
     cudaDeviceReset();
     DST_ALLOC dst(per_array_bytes);
     SRC_ALLOC src(per_array_bytes);
-    dispatch_memory_preparation(dst_target, dst_mode, dst.data, per_array_bytes);
-    dispatch_memory_preparation(src_target, src_mode, src.data, per_array_bytes);
+    dispatch_command(dst_target, dst_mode, dst.data, per_array_bytes);
+    dispatch_command(src_target, src_mode, src.data, per_array_bytes);
 
     void *args[] = {(void *) &dst.data, (void *) &src.data, (void *) &n_elems};
     for (size_t i = 0; i < n_iter; ++i) {
@@ -50,8 +50,8 @@ void stream_test_host_template(size_t n_bytes, size_t n_iter, size_t src_target,
 
     DST_ALLOC dst(per_array_bytes);
     SRC_ALLOC src(per_array_bytes);
-    dispatch_memory_preparation(dst_target, dst_mode, dst.data, per_array_bytes);
-    dispatch_memory_preparation(src_target, src_mode, src.data, per_array_bytes);
+    dispatch_command(dst_target, dst_mode, dst.data, per_array_bytes);
+    dispatch_command(src_target, src_mode, src.data, per_array_bytes);
 
     for (size_t i = 0; i < n_iter; ++i) {
         TIME_FUNCTION_EXECUTION(times[i], (host_stream_copy<double>), (double *) dst.data, (double *) src.data, n_elems);

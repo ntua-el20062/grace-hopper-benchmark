@@ -73,7 +73,7 @@ namespace hmm {
 
     double contiguous_untouched_device_write_single_thread_benchmark(size_t n_bytes) {
         MallocDataFactory<> data_factory(n_bytes);
-        dispatch_memory_preparation(0, INVALIDATE, data_factory.data, n_bytes);
+        dispatch_command(0, INVALIDATE, data_factory.data, n_bytes);
         void *data = data_factory.data;
         void *args[] = {&data, &n_bytes};
         double time = time_kernel_execution_clock((void *) loopy_write_kernel_clock, 1, 1, args, 2, 1, 0, 0);
@@ -83,7 +83,7 @@ namespace hmm {
 
     double contiguous_host_modified_device_write_single_thread_benchmark(size_t n_bytes) {
         MallocDataFactory<> data_factory(n_bytes);
-        dispatch_memory_preparation(0, WRITE, data_factory.data, n_bytes);
+        dispatch_command(0, WRITE, data_factory.data, n_bytes);
         void *data = data_factory.data;
         void *args[] = {&data, &n_bytes};
         double time = time_kernel_execution_clock((void *) loopy_write_kernel_clock, 1, 1, args, 2, 1, 0, 0);
@@ -111,7 +111,7 @@ namespace hmm {
 
     double contiguous_host_modified_device_write_single_warp_benchmark(size_t n_bytes) {
         MallocDataFactory<> data_factory(n_bytes);
-        dispatch_memory_preparation(0, WRITE, data_factory.data, n_bytes);
+        dispatch_command(0, WRITE, data_factory.data, n_bytes);
         void *data = data_factory.data;
         void *args[] = {&data, &n_bytes};
         double time = time_kernel_execution_clock((void *) loopy_write_kernel_clock, 1, 32, args, 2, 32, 0, 0);
@@ -139,7 +139,7 @@ namespace hmm {
 
     double contiguous_host_modified_device_write_single_block_benchmark(size_t n_bytes) {
         MallocDataFactory<> data_factory(n_bytes);
-        dispatch_memory_preparation(0, WRITE, data_factory.data, n_bytes);
+        dispatch_command(0, WRITE, data_factory.data, n_bytes);
         void *data = data_factory.data;
         void *args[] = {&data, &n_bytes};
         double time = time_kernel_execution_clock((void *) loopy_write_kernel_clock, 1, 1024, args, 2, 1024, 0, 0);
@@ -167,7 +167,7 @@ namespace hmm {
 
     double contiguous_host_modified_device_write_full_benchmark(size_t n_bytes) {
         MallocDataFactory<> data_factory(n_bytes);
-        dispatch_memory_preparation(0, WRITE, data_factory.data, n_bytes);
+        dispatch_command(0, WRITE, data_factory.data, n_bytes);
         void *data = data_factory.data;
         void *args[] = {&data, &n_bytes};
         double time = time_kernel_execution_clock((void *) loopy_write_kernel_clock, 264, 1024, args, 2, 264 * 1024, 0, 0);

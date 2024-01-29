@@ -11,6 +11,8 @@
 #include <random>
 #include "random.hpp"
 #include <sys/mman.h>
+#include <stdlib.h>
+#include <fcntl.h>
 
 #define CEIL(a, b) (((a)+(b)-1)/(b))
 
@@ -177,6 +179,20 @@ void initialize_memory_pointer_chase(uint8_t *data, size_t size) {
     invalidate_all(data, size);
 }
 
+void initialize_memory_page_chase(uint8_t *data, size_t size) {
+    size_t num_pages = CEIL(size, PAGE_SIZE);
+
+    _random_init(0, num_pages - 1);
+    uint8_t *itr = data;
+    for (size_t j = 0; j < num_pages - 1; ++j) {
+        uint8_t *new_addr = data + (_random() + 1) * PAGE_SIZE;
+        *((uint8_t **) itr) = new_addr;
+        itr = new_addr;
+    }
+
+    invalidate_all(data, size);
+}
+
 template <typename DATA_INITIALIZER = NoopInit>
 struct MallocDataFactory {
     uint8_t *data = nullptr;
@@ -203,6 +219,26 @@ struct MmapDataFactory {
 
     ~MmapDataFactory() {
         munmap(data, size);
+    }
+};
+
+struct MmioDataFactory {
+    uint8_t *data = nullptr;
+    size_t size = 0;
+    int fd = 0;
+
+    MmioDataFactory(size_t n_bytes) {
+        static const char zeros[4096] = {};
+        fd = open("/scratch/lfusco/dummy", O_RDWR | O_DIRECT);
+        ftruncate(fd, n_bytes);
+        lseek(fd, 0, SEEK_SET);
+        size = n_bytes;
+        data = (uint8_t *) mmap(NULL, n_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    }
+
+    ~MmioDataFactory() {
+        munmap(data, size);
+        close(fd);
     }
 };
 

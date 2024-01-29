@@ -15,15 +15,6 @@ __global__ void stream_copy(T *dst, T *src, size_t size) {
     }
 }
 
-template <typename T>
-__global__ void device_write_kernel(T *a, size_t size) {
-    auto tid = threadIdx.x + blockIdx.x * blockDim.x;
-
-    for (auto i = tid; i < size; i += blockDim.x * gridDim.x) {
-        a[i] = 0;
-    }
-}
-
 /**
  * these functions are meant to evaluate typical memory access pattern from device
  * memory should be prepared in advance in such a way that makes these kernels meaningful
@@ -60,7 +51,6 @@ __global__ void strided_write_kernel(T *out) {
 
 __global__ void loopy_write_kernel_clock(uint8_t *out, size_t size, clock_t *start, clock_t *end) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;;
-    int step = blockDim.x * gridDim.x;
     clock_t local_start, local_end;
 
     volatile uint8_t *itr = out;
