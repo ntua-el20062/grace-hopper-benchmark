@@ -44,13 +44,13 @@ void run_launch_overhead_benchmarks() {
 // }
 
 void run_tiny_benchmarks() {
-    for (size_t i = 4096; i < CPU_L3_CACHE << 2; i = (size_t)((double) i * sqrt(sqrt(2)))) {
-        i = CEIL(i, 64) * 64;
-        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_single_thread_benchmark, "results/tiny/single/untouched/" + std::to_string(i), 101, i);
-        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_modified_device_write_single_thread_benchmark, "results/tiny/single/host_modified/" + std::to_string(i), 101, i);
-        RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_device_modified_device_write_single_thread_benchmark, "results/tiny/single/device_modified/" + std::to_string(i), 101, i);
-        std::cout << i << std::endl;
-    }
+    // for (size_t i = 4096; i < CPU_L3_CACHE << 2; i = (size_t)((double) i * sqrt(sqrt(2)))) {
+    //     i = CEIL(i, 64) * 64;
+    //     RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_single_thread_benchmark, "results/tiny/single/untouched/" + std::to_string(i), 101, i);
+    //     RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_host_modified_device_write_single_thread_benchmark, "results/tiny/single/host_modified/" + std::to_string(i), 101, i);
+    //     RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_device_modified_device_write_single_thread_benchmark, "results/tiny/single/device_modified/" + std::to_string(i), 101, i);
+    //     std::cout << i << std::endl;
+    // }
     // for (size_t i = 64 * 32; i < CPU_L3_CACHE << 4; i = (size_t)((double) i * sqrt(sqrt(2)))) {
     //     i = CEIL(i, 64) * 64;
     //     RUN_BENCHMARK_THROUGHPUT(hmm::contiguous_untouched_device_write_single_warp_benchmark, "results/tiny/warp/untouched/" + std::to_string(i), 101, i);
