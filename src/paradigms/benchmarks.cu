@@ -21,12 +21,12 @@ float flattened_parallelism_benchmark(int N, int M) {
     return time;
 }
 
-float dynamic_parallelism_benchmark(int N, int M) {
-    void *args[] = {(void *) &N, (void *) &M};
-    float time = time_kernel_execution((void *) dynamic_parallelism_kernel, 1, 1, args, 0, 0);
+// float dynamic_parallelism_benchmark(int N, int M) {
+//     void *args[] = {(void *) &N, (void *) &M};
+//     float time = time_kernel_execution((void *) dynamic_parallelism_kernel, 1, 1, args, 0, 0);
 
-    return time;
-}
+//     return time;
+// }
 
 float cooperative_parallelism_benchmark(int N, int M) {
     void *args[] = {(void *) &N, (void *) &M};

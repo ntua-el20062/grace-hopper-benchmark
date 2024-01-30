@@ -43,16 +43,15 @@ __global__ void device_read_kernel_detailed(double *data, size_t n_elems, size_t
 }
 
 __global__ void device_read_kernel(double *data, size_t n_elems) {
-    double dummy[8];
+    double dummy;
 
     int tid = threadIdx.x + blockDim.x * blockIdx.x;
 
-    #pragma unroll 8
     for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
-        dummy[i%8] = data[i];
+        dummy += data[i];
     }
     if (tid == -1) {
-        printf("%lf ", dummy[0]);
+        printf("%lf ", dummy);
     }
 }
 
@@ -72,21 +71,237 @@ __global__ void device_copy_kernel(double *a, double *b, size_t n_elems) {
     }
 }
 
+__global__ void device_read_kernel_sync(double *data, size_t n_elems, size_t n_iter, clock_t *time, clock_t *sync) {
+    double dummy;
+    __shared__ clock_t clocks[1024];
+
+    int tid = threadIdx.x + blockDim.x * blockIdx.x;
+
+    auto grid = cg::this_grid();
+
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        // SYNC -------------------
+        grid.sync();
+        if (tid == 0) *sync = clock() + (19800000/7)*7;
+        grid.sync();
+        clock_t start = *sync;
+        //if (threadIdx.x == 0) printf("%ld ", start);
+        while (clock() < start) {}
+        // ------------------------
+
+        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+            dummy += data[i];
+        }
+
+        clock_t end = clock();
+        clocks[threadIdx.x] = end - start;
+
+        // STORE -----------------
+        grid.sync();
+        if (tid == 0) {
+            clock_t t = clocks[0];
+            for (size_t i = 1; i < 1024; ++i) {
+                t = max(t, clocks[i]);
+            }
+            time[iter * blockDim.x + blockIdx.x] = t;
+        }
+        // ----------------------
+    }
+    if (tid == -1) {
+        printf("%lf ", dummy);
+    }
+}
+
+__global__ void device_write_kernel_sync(double *a, size_t n_elems, size_t n_iter, clock_t *time, clock_t *sync) {
+    __shared__ clock_t clocks[1024];
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    auto grid = cg::this_grid();
+
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        // SYNC -------------------
+        grid.sync();
+        if (tid == 0) *sync = clock() + (19800000/7)*7;
+        grid.sync();
+        clock_t start = *sync;
+        while (clock() < start) {}
+        // ------------------------
+
+        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+            a[i] = 0;
+        }
+        
+        clock_t end = clock();
+        clocks[threadIdx.x] = end - start;
+
+        // STORE -----------------
+        grid.sync();
+        if (tid == 0) {
+            clock_t t = clocks[0];
+            for (size_t i = 1; i < 1024; ++i) {
+                t = max(t, clocks[i]);
+            }
+            time[iter * blockDim.x + blockIdx.x] = t;
+        }
+        // ----------------------
+    }
+}
+
+__global__ void device_copy_kernel_sync(double *a, double *b, size_t n_elems, size_t n_iter, clock_t *time, clock_t *sync) {
+    __shared__ clock_t clocks[1024];
+    auto tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    auto grid = cg::this_grid();
+
+
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        // SYNC -------------------
+        grid.sync();
+        if (tid == 0) *sync = clock() + (19800000/7)*7;
+        grid.sync();
+        clock_t start = *sync;
+        while (clock() < start) {}
+        // ------------------------
+
+        for (auto i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+            b[i] = a[i];
+        }
+
+        clock_t end = clock();
+        clocks[threadIdx.x] = end - start;
+
+        // STORE -----------------
+        grid.sync();
+        if (tid == 0) {
+            clock_t t = clocks[0];
+            for (size_t i = 1; i < 1024; ++i) {
+                t = max(t, clocks[i]);
+            }
+            time[iter * blockDim.x + blockIdx.x] = t;
+        }
+        // ----------------------
+    }
+}
+
+__global__ void device_read_kernel_block(double *data, size_t n_elems, size_t n_iter, clock_t *time) {
+    double dummy;
+    __shared__ clock_t clocks[1025];
+
+    int tid = threadIdx.x + blockDim.x * blockIdx.x;
+
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        // SYNC -------------------
+        __syncthreads();
+        clocks[1024] = clock() + (19800000/7)*7;
+        __syncthreads();
+        clock_t start = clocks[1024];
+        while (clock() < start) {}
+        // ------------------------
+
+        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+            dummy += data[i];
+        }
+
+        clock_t end = clock();
+        clocks[threadIdx.x] = end - start;
+
+        // STORE -----------------
+        __syncthreads();
+        if (tid == 0) {
+            clock_t t = clocks[0];
+            for (size_t i = 1; i < 1024; ++i) {
+                t = max(t, clocks[i]);
+            }
+            time[iter] = t;
+        }
+        // ----------------------
+    }
+    if (tid == -1) {
+        printf("%lf ", dummy);
+    }
+}
+
+__global__ void device_write_kernel_block(double *a, size_t n_elems, size_t n_iter, clock_t *time) {
+    __shared__ clock_t clocks[1025];
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        // SYNC -------------------
+        __syncthreads();
+        clocks[1024] = clock() + (19800000/7)*7;
+        __syncthreads();
+        clock_t start = clocks[1024];
+        while (clock() < start) {}
+        // ------------------------
+
+        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+            a[i] = 0;
+        }
+        
+        clock_t end = clock();
+        clocks[threadIdx.x] = end - start;
+
+        // STORE -----------------
+        __syncthreads();
+        if (tid == 0) {
+            clock_t t = clocks[0];
+            for (size_t i = 1; i < 1024; ++i) {
+                t = max(t, clocks[i]);
+            }
+            time[iter] = t;
+        }
+        // ----------------------
+    }
+}
+
+__global__ void device_copy_kernel_block(double *a, double *b, size_t n_elems, size_t n_iter, clock_t *time) {
+    __shared__ clock_t clocks[1025];
+    auto tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        // SYNC -------------------
+        __syncthreads();
+        clocks[1024] = clock() + (19800000/7)*7;
+        __syncthreads();
+        clock_t start = clocks[1024];
+        while (clock() < start) {}
+        // ------------------------
+
+        for (auto i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+            b[i] = a[i];
+        }
+
+        clock_t end = clock();
+        clocks[threadIdx.x] = end - start;
+
+        // STORE -----------------
+        __syncthreads();
+        if (tid == 0) {
+            clock_t t = clocks[0];
+            for (size_t i = 1; i < 1024; ++i) {
+                t = max(t, clocks[i]);
+            }
+            time[iter] = t;
+        }
+        // ----------------------
+    }
+}
+
 __global__ void device_read_kernel_single(double *a, size_t n_elems, size_t n_iter, clock_t *time) {
-    double dummy[8];
+    double dummy;
     
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
     for (size_t iter = 0; iter < n_iter; ++iter) {
         clock_t start = clock();
-        #pragma unroll 8
         for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
-            dummy[i%8] = a[i];
+            dummy += a[i];
         }
         clock_t end = clock();
         time[iter] = end - start;
         if (tid == -1) {
-            printf("%lf ", dummy[0]);
+            printf("%lf ", dummy);
         }
     }
 }
@@ -129,12 +344,30 @@ void write_test_device_template(size_t n_iter, size_t n_bytes, int grid_size, si
         device_write_kernel_single<<<1, 1>>>((double *) factory.data, n_elems, n_iter, times);
         cudaDeviceSynchronize();
         times_to_file(times, n_iter, n_bytes, "results/write/device/single/" + name);
+    } else if (grid_size == 1) { // run with only one block
+        clock_t times[n_iter];
+        device_write_kernel_block<<<1, 1024>>>((double *) factory.data, n_elems, n_iter, times);
+        cudaDeviceSynchronize();
+        times_to_file(times, n_iter, n_bytes, "results/write/device/block/" + name);
     } else {
-        void *args[] = {(void *) &factory.data, (void *) &n_elems};
-        for (size_t i = 0; i < n_iter; ++i) {
-            times[i] = time_kernel_execution((void *) device_write_kernel, grid_size, 1024, args, 0, 0);
+        clock_t big_times[n_iter * grid_size];
+        clock_t small_times[n_iter];
+        clock_t sync;
+        void *args[] = {(void *) &factory.data, (void *) &n_elems, (void *) &n_iter, (void *) big_times, (void *) &sync};
+        cudaLaunchCooperativeKernel((void *) device_write_kernel_sync, grid_size, 512, args, 0, 0);
+        cudaDeviceSynchronize();
+        for (size_t itr = 0; itr < n_iter; ++itr) {
+            clock_t t = big_times[itr * grid_size];
+            for (size_t block_id = 1; block_id < grid_size; ++block_id) {
+                t = max(t, big_times[itr * grid_size + block_id]);
+            }
+            small_times[itr] = t;
         }
-        millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/write/device/" + name);
+        times_to_file(small_times, n_iter, n_bytes, "results/write/device/" + name);
+        // for (size_t i = 0; i < n_iter; ++i) {
+        //     times[i] = time_kernel_execution((void *) device_write_kernel, grid_size, 1024, args, 0, 0);
+        // }
+        // millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/write/device/" + name);
     }
 }
 
@@ -150,12 +383,30 @@ void read_test_device_template(size_t n_iter, size_t n_bytes, int grid_size, siz
         device_read_kernel_single<<<1, 1>>>((double *) factory.data, n_elems, n_iter, times);
         cudaDeviceSynchronize();
         times_to_file(times, n_iter, n_bytes, "results/read/device/single/" + name);
+    } else if (grid_size == 1) { // run with only one block
+        clock_t times[n_iter];
+        device_read_kernel_block<<<1, 1024>>>((double *) factory.data, n_elems, n_iter, times);
+        cudaDeviceSynchronize();
+        times_to_file(times, n_iter, n_bytes, "results/read/device/block/" + name);
     } else {
-        void *args[] = {(void *) &factory.data, (void *) &n_elems};
-        for (size_t i = 0; i < n_iter; ++i) {
-            times[i] = time_kernel_execution((void *) device_read_kernel, grid_size, 1024, args, 0, 0);
+        clock_t big_times[n_iter * grid_size];
+        clock_t small_times[n_iter];
+        clock_t sync;
+        void *args[] = {(void *) &factory.data, (void *) &n_elems, (void *) &n_iter, (void *) big_times, (void *) &sync};
+        cudaLaunchCooperativeKernel((void *) device_read_kernel_sync, grid_size, 512, args, 0, 0);
+        cudaDeviceSynchronize();
+        for (size_t itr = 0; itr < n_iter; ++itr) {
+            clock_t t = big_times[itr * grid_size];
+            for (size_t block_id = 1; block_id < grid_size; ++block_id) {
+                t = max(t, big_times[itr * grid_size + block_id]);
+            }
+            small_times[itr] = t;
         }
-        millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/read/device/" + name);
+        times_to_file(small_times, n_iter, n_bytes, "results/read/device/" + name);
+        // for (size_t i = 0; i < n_iter; ++i) {
+        //     times[i] = time_kernel_execution((void *) device_read_kernel, grid_size, 1024, args, 0, 0);
+        // }
+        // millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/read/device/" + name);
     }
 }
 
@@ -176,12 +427,30 @@ void copy_test_device_template(size_t n_iter, size_t n_bytes, int grid_size, siz
         device_copy_kernel_single<<<1, 1>>>((double *) src.data, (double *) dst.data, n_elems, n_iter, times);
         cudaDeviceSynchronize();
         times_to_file(times, n_iter, n_bytes, "results/copy/device/single/" + name);
+    } else if (grid_size == 1) { // run with only one block
+        clock_t times[n_iter];
+        device_copy_kernel_block<<<1, 1024>>>((double *) src.data, (double *) dst.data, n_elems, n_iter, times);
+        cudaDeviceSynchronize();
+        times_to_file(times, n_iter, n_bytes, "results/copy/device/block/" + name);
     } else {
-        void *args[] = {(void *) &src.data, (void *) &dst.data, (void *) &n_elems};
-        for (size_t i = 0; i < n_iter; ++i) {
-            times[i] = time_kernel_execution((void *) device_copy_kernel, grid_size, 1024, args, 0, 0);
+        clock_t big_times[n_iter * grid_size];
+        clock_t small_times[n_iter];
+        clock_t sync;
+        void *args[] = {(void *) &src.data, (void *) &dst.data, (void *) &n_elems, (void *) &n_iter, (void *) big_times, (void *) &sync};
+        cudaLaunchCooperativeKernel((void *) device_copy_kernel_sync, grid_size, 512, args, 0, 0);
+        cudaDeviceSynchronize();
+        for (size_t itr = 0; itr < n_iter; ++itr) {
+            clock_t t = big_times[itr * grid_size];
+            for (size_t block_id = 1; block_id < grid_size; ++block_id) {
+                t = max(t, big_times[itr * grid_size + block_id]);
+            }
+            small_times[itr] = t;
         }
-        millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/copy/device/" + name);
+        times_to_file(small_times, n_iter, n_bytes, "results/copy/device/" + name);
+        // for (size_t i = 0; i < n_iter; ++i) {
+        //     times[i] = time_kernel_execution((void *) device_copy_kernel, grid_size, 1024, args, 0, 0);
+        // }
+        // millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/copy/device/" + name);
     }
 }
 
@@ -216,29 +485,29 @@ void run_copy_tests_device(size_t n_iter, size_t n_bytes, int grid_size, std::st
 
 
 // ---------------- HOST FUNCTIONS --------------------------------
-__attribute__((always_inline)) inline double host_write_function(double *a, size_t n_elems, size_t n_threads) {
-    MEASURE_CPU_LOOP_AND_RETURN(
-        for (size_t i = 0; i < n_elems; ++i) {
-            a[i] = 0;
-        }
-    )
-}
+// __attribute__((always_inline)) inline double host_write_function(double *a, size_t n_elems, size_t n_threads) {
+//     MEASURE_CPU_LOOP_AND_RETURN(
+//         for (size_t i = 0; i < n_elems; ++i) {
+//             a[i] = 0;
+//         }
+//     )
+// }
 
-__attribute__((always_inline)) inline double host_read_function(double *a, size_t n_elems, size_t n_threads) {
-    MEASURE_CPU_LOOP_AND_RETURN(
-        for (size_t i = 0; i < n_elems; ++i) {
-            asm volatile("ldr x0, [%0]" :: "r" (&a[i]) : "x0");
-        }
-    )
-}
+// __attribute__((always_inline)) inline double host_read_function(double *a, size_t n_elems, size_t n_threads) {
+//     MEASURE_CPU_LOOP_AND_RETURN(
+//         for (size_t i = 0; i < n_elems; ++i) {
+//             asm volatile("ldr x0, [%0]" :: "r" (&a[i]) : "x0");
+//         }
+//     )
+// }
 
-__attribute__((always_inline)) inline double host_copy_function(double *a, double *b, size_t n_elems, size_t n_threads) {
-    MEASURE_CPU_LOOP_AND_RETURN(
-        for (size_t i = 0; i < n_elems; ++i) {
-            b[i] = a[i];
-        }
-    )
-}
+// __attribute__((always_inline)) inline double host_copy_function(double *a, double *b, size_t n_elems, size_t n_threads) {
+//     MEASURE_CPU_LOOP_AND_RETURN(
+//         for (size_t i = 0; i < n_elems; ++i) {
+//             b[i] = a[i];
+//         }
+//     )
+// }
 
 // ---------------- HOST TEMPLATES --------------------------------
 template <typename ALLOC>
@@ -248,7 +517,7 @@ void write_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, s
     ALLOC factory(n_bytes);
     dispatch_command(target, command, factory.data, n_bytes);
     for (size_t i = 0; i < n_iter; ++i) {
-        times[i] = host_write_function((double *) factory.data, n_elems, n_threads);
+        times[i] = run_test(WRITE_TEST, n_threads, factory.data, nullptr, n_elems);
     }
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/write/host/" + name);
 }
@@ -260,7 +529,7 @@ void read_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, si
     ALLOC factory(n_bytes);
     dispatch_command(device, command, factory.data, n_bytes);
     for (size_t i = 0; i < n_iter; ++i) {
-        times[i] = host_read_function((double *) factory.data, n_elems, n_threads);
+        times[i] = run_test(WRITE_TEST, n_threads, factory.data, nullptr, n_elems);
     }
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/read/host/" + name);
 }
@@ -277,16 +546,13 @@ void copy_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, si
     dispatch_command(dst_target, dst_mode, dst.data, per_array_bytes);
 
     for (size_t i = 0; i < n_iter; ++i) {
-        times[i] = host_copy_function((double *) src.data, (double *) dst.data, n_elems, n_threads);
+        times[i] = run_test(WRITE_TEST, n_threads, src.data, dst.data, n_elems);
     }
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/copy/host/" + name);
 }
 
 // ---------------- HOST TESTS --------------------------------
 void run_write_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
-#ifndef _OPENMP
-    base += "single/";
-#endif
     // write_test_host_template<MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, NONE, "mmap_untouched");
     // write_test_host_template<MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, WRITE, "mmap_device_written");
     // write_test_host_template<MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, READ, "mmap_device_read");
@@ -299,9 +565,6 @@ void run_write_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::
 }
 
 void run_read_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
-#ifndef _OPENMP
-    base += "single/";
-#endif
     // read_test_host_template<MmapDataFactory>(n_iter, n_bytes, n_threads, DEVICE_ID, NONE, "mmap_untouched");
     // read_test_host_template<MmapDataFactory>(n_iter, n_bytes, n_threads, DEVICE_ID, WRITE, "mmap_device_written");
     // read_test_host_template<MmapDataFactory>(n_iter, n_bytes, n_threads, DEVICE_ID, READ, "mmap_device_read");
@@ -316,9 +579,6 @@ void run_read_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::s
 }
 
 void run_copy_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
-#ifndef _OPENMP
-    base += "single/";
-#endif
     copy_test_host_template<MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, n_threads, HOST_ID, WRITE, HOST_ID, WRITE, base + "ddr_ddr/" + end);
     copy_test_host_template<MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, n_threads, HOST_ID, WRITE, DEVICE_ID, WRITE, base + "ddr_hbm/" + end);
     copy_test_host_template<MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, n_threads, DEVICE_ID, WRITE, DEVICE_ID, WRITE, base + "hbm_hbm/" + end);

@@ -14,8 +14,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#define CEIL(a, b) (((a)+(b)-1)/(b))
-
 constexpr int BLOCK_SIZE = 256;
 
 SpinLock affinity_mutex;
@@ -228,9 +226,11 @@ struct MmioDataFactory {
     int fd = 0;
 
     MmioDataFactory(size_t n_bytes) {
-        static const char zeros[4096] = {};
         fd = open("/scratch/lfusco/dummy", O_RDWR | O_DIRECT);
-        ftruncate(fd, n_bytes);
+        int res = ftruncate(fd, n_bytes);
+        if (res) {
+            exit(res);
+        }
         lseek(fd, 0, SEEK_SET);
         size = n_bytes;
         data = (uint8_t *) mmap(NULL, n_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);

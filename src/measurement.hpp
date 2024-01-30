@@ -6,6 +6,8 @@
 #include <fstream>
 #include <omp.h>
 
+#define CEIL(a, b) (((a)+(b)-1)/(b))
+
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
@@ -285,35 +287,9 @@ double time_function_execution(FUNCTYPE f, ARGTYPES... args) {
     while (FUNC() < __CHECK);
 
 #define KERNEL_SYNC(__TARGET) GENERIC_SYNC(__TARGET, (threadIdx.x + blockDim.x * blockIdx.x), clock, ((1980000/7)*7));
-#define OMP_SYNC(__TARGET) GENERIC_SYNC(__TARGET, (omp_get_thread_num()), get_cpu_clock, ((1000000/32)*32));
 
 #define GENERIC_MEASURE(__TARGET, ID, FUNC)\
     auto __TIME = FUNC();\
     __TARGET[ID] = __TIME - __CHECK;
 
 #define KERNEL_MEASURE(__TARGET) GENERIC_MEASURE(__TARGET, (threadIdx.x + blockDim.x * blockIdx.x), clock)
-#define OMP_MEASURE(__TARGET) GENERIC_MEASURE(__TARGET, (omp_get_thread_num()), get_cpu_clock)
-
-#ifdef _OPENMP
-#define MEASURE_CPU_LOOP_AND_RETURN(LOOP) {\
-    volatile uint64_t TIMES[n_threads];\
-    TIMES[0] = 0;\
-_Pragma("omp parallel num_threads(n_threads)")\
-    {\
-        OMP_SYNC(TIMES);\
-        _Pragma("omp for")\
-        LOOP\
-        OMP_MEASURE(TIMES);\
-    }\
-    volatile uint64_t OUT_TIME = TIMES[0];\
-    for (size_t i = 0; i < n_threads; ++i) {\
-        OUT_TIME = std::max(OUT_TIME, TIMES[i]);\
-    }\
-    return clock_to_milliseconds(OUT_TIME);}
-#else
-#define MEASURE_CPU_LOOP_AND_RETURN(LOOP) {\
-    auto START = get_cpu_clock();\
-    LOOP\
-    auto OUT_TIME = get_cpu_clock() - START;\
-    return clock_to_milliseconds(OUT_TIME);}
-#endif

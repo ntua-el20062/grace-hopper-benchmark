@@ -102,10 +102,10 @@ __global__ void cooperative_flattened_nested_kernel(int N, int M, int K, cub::Gr
 /////////////////// single depth kernels //////////////////////////
 
 // launched on 1 thread!
-__global__ void dynamic_parallelism_kernel(int N, int M) {
-    dynamic_work_kernel<<<N/32, 32>>>();
-    dynamic_work_kernel<<<M/32, 32>>>();
-}
+// __global__ void dynamic_parallelism_kernel(int N, int M) {
+//     dynamic_work_kernel<<<N/32, 32>>>();
+//     dynamic_work_kernel<<<M/32, 32>>>();
+// }
 
 // launched on N + M threads
 __global__ void flattened_parallelism_kernel(int N, int M, cub::GridBarrier __gbar) {

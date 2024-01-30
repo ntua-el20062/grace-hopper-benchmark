@@ -3,6 +3,7 @@
 #include "base_functions.hpp"
 #include <iostream>
 #include "base_kernels.cuh"
+#include "measurement.hpp"
 
 #define NUM_THREADS 64
 
@@ -137,20 +138,22 @@ void dispatch_command(size_t t_id, ThreadCommand command, uint8_t *buffer, size_
 
 double run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems) {
     assert(n_threads <= NUM_THREADS);
-    uint64_t start_time = get_cpu_clock() + 10000000; // cur + 10ms
-    size_t per_thread_n_elems = CEIL(n_elems, n_threads);
-    size_t last_thread_n_elems = n_elems - (per_thread_n_elems * (n_threads - 1));
+    size_t n_cachelines = n_elems / 8; // 8 doubles per cacheline
+    size_t per_thread_n_cachelines = n_cachelines / n_threads;
+    size_t remainder = n_cachelines % n_threads;
+    uint64_t start_time = get_cpu_clock() + ((10000000/32)*32); // cur + 10ms (multiple of clock resolution)
     for (size_t i = 0; i < n_threads; ++i) {
-        thread_data *cur = &thread_array[t_id - 1];
-        cur->command = command;
-        cur->buffer = buffer + (i * per_thread_n_elems * sizeof(double));
-        cur->buffer = second_buffer + (i * per_thread_n_elems * sizeof(double));
-        cur->size = i < n_threads - 1 ? per_thread_n_elems : last_thread_n_elems;
+        thread_data *cur = &thread_array[i];
+        cur->command = test;
+        cur->buffer = buffer;
+        cur->second_buffer = second_buffer;
+        cur->size = (per_thread_n_cachelines + (i < remainder ? 1 : 0)) * 8;
         cur->start_time = start_time;
+        buffer += cur->size * sizeof(double);
     }
 
     for (size_t i = 0; i < n_threads; ++i) {
-        thread_data *cur = &thread_array[t_id - 1];
+        thread_data *cur = &thread_array[i];
         cur->rx_mutex.lock();
         cur->tx_mutex.unlock(); // send command
     }
@@ -158,18 +161,50 @@ double run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *
     uint64_t end_time = 0;
 
     for (size_t i = 0; i < n_threads; ++i) {
-        thread_data *cur = &thread_array[t_id - 1];
+        thread_data *cur = &thread_array[i];
         cur->rx_mutex.lock(); // wait until thread is done
         cur->rx_mutex.unlock();
         end_time = std::max(end_time, cur->end_time);
     }
 
-    return get_elapsed_milliseconds(start_time, end_time);
+    return get_elapsed_milliseconds_clock(start_time, end_time);
 }
 
 void invalidate_all(uint8_t *buffer, size_t size) {
     prepare_memory(WRITE, buffer, size);        // put in OWNED state
     prepare_memory(READ, cache_filler, sizeof(cache_filler));   // invalidate locally
+}
+
+__attribute__((always_inline)) inline uint64_t thread_write_function(uint64_t start_time, double *a, size_t n_elems) {
+    while (get_cpu_clock() < start_time) {}
+    for (size_t i = 0; i < n_elems; ++i) {
+        a[i] = 0;
+    }
+    return get_cpu_clock();
+}
+
+__attribute__((always_inline)) inline uint64_t thread_read_function(uint64_t start_time, double *a, size_t n_elems) {
+    while (get_cpu_clock() < start_time) {}
+    for (size_t i = 0; i < n_elems/8; ++i) {
+        asm volatile("ldr x0, [%0];"
+                     "ldr x0, [%0];"
+                     "ldr x0, [%0];"
+                     "ldr x0, [%0];"
+
+                     "ldr x0, [%0];"
+                     "ldr x0, [%0];"
+                     "ldr x0, [%0];"
+                     "ldr x0, [%0];" :: "r" (&a[i]) : "x0");
+    }
+    return get_cpu_clock();
+}
+
+__attribute__((always_inline)) inline uint64_t thread_copy_function(uint64_t start_time, double *a, double *b, size_t n_elems) {
+    while (get_cpu_clock() < start_time) {}
+    for (size_t i = 0; i < n_elems; ++i) {
+        b[i] = a[i];
+    }
+    return get_cpu_clock();
 }
 
 void thread_function(thread_data *t_info) {
@@ -184,7 +219,14 @@ void thread_function(thread_data *t_info) {
                 prepare_memory(t_info->command, t_info->buffer, t_info->size);
                 break;
             case READ_TEST:
-                
+                t_info->end_time = thread_read_function(t_info->start_time, (double *)t_info->buffer, t_info->size);
+                break;
+            case WRITE_TEST:
+                t_info->end_time = thread_write_function(t_info->start_time, (double *)t_info->buffer, t_info->size);
+                break;
+            case COPY_TEST:
+                t_info->end_time = thread_copy_function(t_info->start_time, (double *)t_info->buffer, (double *) t_info->second_buffer, t_info->size);
+                break;
         }
         t_info->rx_mutex.unlock(); // signal completion
     }

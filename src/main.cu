@@ -16,7 +16,7 @@ void run_launch_overhead_benchmarks() {
     for (size_t i = 32; i < 32 << 12; i <<= 1) {
         RUN_BENCHMARK_RAW(kernel_invocation_benchmark, "results/host/" + std::to_string(i), 101, i, i);
         RUN_BENCHMARK_RAW(flattened_parallelism_benchmark, "results/flattened/" + std::to_string(i), 101, i, i);
-        RUN_BENCHMARK_RAW(dynamic_parallelism_benchmark, "results/dynamic/" + std::to_string(i), 101, i, i);
+        // RUN_BENCHMARK_RAW(dynamic_parallelism_benchmark, "results/dynamic/" + std::to_string(i), 101, i, i);
         RUN_BENCHMARK_RAW(cooperative_parallelism_benchmark, "results/cooperative/" + std::to_string(i), 101, i, i);
     }
 }
@@ -146,25 +146,10 @@ int main() {
     } else {
         std::cout << "[INFO] thread pinning works" << std::endl;
     }
-    // OLD OPENMP CODE
-    // //std::cout << "[INFO] default omp threads: " << omp_get_max_threads() << std::endl;
-    // omp_set_num_threads(64);
-    // std::cout << "[INFO] running omp with threads: " << omp_get_max_threads() << std::endl;
-    // #pragma omp parallel
-    // {
-    //     cpu_set_t mask;
-    //     CPU_ZERO(&mask);
-    //     sched_getaffinity(0, sizeof(mask), &mask);
-    //     for (int i = 0; i < CPU_SETSIZE; ++i) {
-    //         if (CPU_ISSET(i, &mask)) {
-    //             printf("(%d %d)", omp_get_thread_num(), i);
-    //             break;
-    //         }
-    //     }
-    // }
-    // printf("\n");
 
-    int device_count = 0;
+    gpuErrchk( cudaDeviceReset() );
+
+    int device_count = 100;
     cudaGetDeviceCount(&device_count);
 
     std::cout << device_count << " devices found" << std::endl;
@@ -181,12 +166,15 @@ int main() {
     for (size_t i = 4096; i <= 1UL << 31; i = (size_t)((double) i * sqrt(sqrt(2)))) {
         i = CEIL(i, 64) * 64;
         std::cout << i << std::endl;
-        // run_read_tests_device(10, i, 0, "", std::to_string(i));
-        // run_write_tests_device(10, i, 0, "", std::to_string(i));
-        // run_read_tests_host(10, i, 64, "", std::to_string(i));
-        // run_write_tests_host(10, i, 64, "", std::to_string(i));
-        // run_copy_tests_device(10, i, 264, "", std::to_string(i));
-        // run_copy_tests_host(10, i, 64, "", std::to_string(i));
+        run_read_tests_device(10, i, 132, "", std::to_string(i));
+        run_write_tests_device(10, i, 132, "", std::to_string(i));
+        run_copy_tests_device(10, i, 132, "", std::to_string(i));
+        // run_read_tests_host(10, i, 16, "", std::to_string(i));
+        // run_write_tests_host(10, i, 16, "", std::to_string(i));
+        // run_copy_tests_host(10, i, 16, "", std::to_string(i));
+        // run_read_tests_host(10, i, 1, "single/", std::to_string(i));
+        // run_write_tests_host(10, i, 1, "single/", std::to_string(i));
+        // run_copy_tests_host(10, i, 1, "single/", std::to_string(i));
     }
     // run_latency_test_host<true>(1000, 1UL << 31);
     // run_latency_test_device<true>(1000, 1UL << 31);
@@ -196,18 +184,18 @@ int main() {
 
 
     // ------------- HOST SCALABILITY -------------
-    for (size_t n_threads = 1; n_threads <= 64; ++n_threads) {
-        run_read_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
-        run_write_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
-        // run_copy_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
-    }
+    // for (size_t n_threads = 1; n_threads <= 64; ++n_threads) {
+    //     // run_read_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
+    //     // run_write_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
+    //     run_copy_tests_host(10, 1UL << 31, n_threads, "scalability/", std::to_string(n_threads));
+    // }
 
-    // ------------- DEVICE SCALABILITY -------------
-    for (size_t n_blocks = 1; n_blocks <= 264; ++n_blocks) {
-        run_read_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
-        run_write_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
-        // run_copy_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
-    }
+    // // ------------- DEVICE SCALABILITY -------------
+    // for (size_t n_blocks = 1; n_blocks <= 264; ++n_blocks) {
+    //     run_read_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
+    //     // run_write_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
+    //     // run_copy_tests_device(10, 1UL << 31, n_blocks, "scalability/", std::to_string(n_blocks));
+    // }
 
     terminate_threads();
 }

@@ -62,9 +62,9 @@ void latency_test_host_template(size_t n_iter, size_t n_bytes, size_t device, Th
         initialize_memory_pointer_chase(factory.data, n_bytes);
         n_elem = n_bytes / CACHELINE_SIZE;
     }
-    //dispatch_command(device, command, factory.data, n_bytes);
 
     for (size_t i = 0; i < n_iter; ++i) {
+        invalidate_all(factory.data, n_bytes);
         times[i] = latency_function(factory.data, n_elem);
     }
 
@@ -96,7 +96,6 @@ void latency_test_device_template(size_t n_iter, size_t n_bytes, size_t device, 
         initialize_memory_pointer_chase(factory.data, n_bytes);
         n_elem = n_bytes / CACHELINE_SIZE;
     }
-    //dispatch_command(device, command, factory.data, n_bytes);
 
     latency_kernel<<<1, 1>>>(factory.data, n_elem, n_iter, times);
     cudaDeviceSynchronize();
