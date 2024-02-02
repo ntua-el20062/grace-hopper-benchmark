@@ -29,6 +29,8 @@ enum ThreadCommand {
     READ_TEST,
     WRITE_TEST,
     COPY_TEST,
+    MEMSET_TEST,
+    MEMCPY_TEST,
     TERMINATE
 };
 
@@ -43,7 +45,7 @@ struct thread_data {
     size_t size;
     uint64_t start_time;
     uint64_t end_time;
-} __attribute__((aligned(64)));
+} __attribute__((aligned(128)));
 
 thread_data thread_array[NUM_THREADS];
 uint8_t cache_filler[(int) ((double)CPU_L3_CACHE * 2.1f)];
@@ -88,22 +90,22 @@ void prepare_memory(ThreadCommand command, uint8_t *buffer, size_t size) {
 }
 
 __global__ void device_write_preparation_kernel(uint8_t *a, size_t size) {
-    auto tid = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-    for (auto i = tid * 32; i < size; i += blockDim.x * gridDim.x * 32) {
+    for (size_t i = tid * 32; i < size; i += blockDim.x * gridDim.x * 32) {
         a[i] = 0;
     }
 }
 
 __global__ void device_read_preparation_kernel(uint8_t *a, size_t size) {
     uint8_t dummy[2];
-    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-    for (auto i = tid * 32; i < size; i += blockDim.x * gridDim.x * 32) {
+    for (size_t i = tid * 32; i < size; i += blockDim.x * gridDim.x * 32) {
         dummy[i%2] = a[i];
     }
 
-    if (tid < 0) {
+    if (tid == (size_t)-1) {
         printf("%u", dummy[0]);
     }
 }
@@ -136,20 +138,21 @@ void dispatch_command(size_t t_id, ThreadCommand command, uint8_t *buffer, size_
     }
 }
 
-double run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems) {
+uint64_t run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems, uint64_t *start_times, uint64_t *end_times) {
     assert(n_threads <= NUM_THREADS);
     size_t n_cachelines = n_elems / 8; // 8 doubles per cacheline
     size_t per_thread_n_cachelines = n_cachelines / n_threads;
     size_t remainder = n_cachelines % n_threads;
-    uint64_t start_time = get_cpu_clock() + ((10000000/32)*32); // cur + 10ms (multiple of clock resolution)
+    uint64_t nominal_start_time = get_cpu_clock() + ((1000000/32)*32); // cur + 1ms (multiple of clock resolution)
     for (size_t i = 0; i < n_threads; ++i) {
         thread_data *cur = &thread_array[i];
         cur->command = test;
         cur->buffer = buffer;
         cur->second_buffer = second_buffer;
         cur->size = (per_thread_n_cachelines + (i < remainder ? 1 : 0)) * 8;
-        cur->start_time = start_time;
+        cur->start_time = nominal_start_time;
         buffer += cur->size * sizeof(double);
+        second_buffer += cur->size * sizeof(double);
     }
 
     for (size_t i = 0; i < n_threads; ++i) {
@@ -158,16 +161,29 @@ double run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *
         cur->tx_mutex.unlock(); // send command
     }
 
-    uint64_t end_time = 0;
-
     for (size_t i = 0; i < n_threads; ++i) {
         thread_data *cur = &thread_array[i];
         cur->rx_mutex.lock(); // wait until thread is done
         cur->rx_mutex.unlock();
-        end_time = std::max(end_time, cur->end_time);
+        start_times[i] = cur->start_time;
+        end_times[i] = cur->end_time;
     }
 
-    return get_elapsed_milliseconds_clock(start_time, end_time);
+    return nominal_start_time;
+}
+
+double time_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems) {
+    uint64_t start_times[n_threads];
+    uint64_t end_times[n_threads];
+
+    uint64_t nominal_start_time = run_test(test, n_threads, buffer, second_buffer, n_elems, start_times, end_times);
+
+    uint64_t max_end = 0;
+    for (size_t i = 0; i < n_threads; ++i) {
+        max_end = std::max(max_end, end_times[i]);
+    }
+
+    return get_elapsed_milliseconds_clock(nominal_start_time, max_end);
 }
 
 void invalidate_all(uint8_t *buffer, size_t size) {
@@ -175,26 +191,42 @@ void invalidate_all(uint8_t *buffer, size_t size) {
     prepare_memory(READ, cache_filler, sizeof(cache_filler));   // invalidate locally
 }
 
-__attribute__((always_inline)) inline uint64_t thread_write_function(uint64_t start_time, double *a, size_t n_elems) {
-    while (get_cpu_clock() < start_time) {}
-    for (size_t i = 0; i < n_elems; ++i) {
-        a[i] = 0;
+__attribute__((always_inline)) inline uint64_t thread_write_function(uint64_t start_time, uint64_t *actual_time, double *a, size_t n_elems) {
+    do {
+        *actual_time = get_cpu_clock();
+    } while (*actual_time < start_time);
+    for (size_t i = 0; i < n_elems; i += 8) {
+        asm volatile("str x0, [%0];"
+                    "str x0, [%0, #8];"
+                    "str x0, [%0, #16];"
+                    "str x0, [%0, #24];"
+
+                    "str x0, [%0, #32];"
+                    "str x0, [%0, #40];"
+                    "str x0, [%0, #48];"
+                    "str x0, [%0, #56];" :: "r" (&a[i]) :);
     }
+    return get_cpu_clock();
+}
+
+__attribute__((always_inline)) inline uint64_t thread_memset_function(uint64_t start_time, double *a, size_t n_elems) {
+    while (get_cpu_clock() < start_time) {}
+    memset(a, 0, n_elems * sizeof(double));
     return get_cpu_clock();
 }
 
 __attribute__((always_inline)) inline uint64_t thread_read_function(uint64_t start_time, double *a, size_t n_elems) {
     while (get_cpu_clock() < start_time) {}
-    for (size_t i = 0; i < n_elems/8; ++i) {
+    for (size_t i = 0; i < n_elems; i += 8) {
         asm volatile("ldr x0, [%0];"
-                     "ldr x0, [%0];"
-                     "ldr x0, [%0];"
-                     "ldr x0, [%0];"
+                     "ldr x0, [%0, #8];"
+                     "ldr x0, [%0, #16];"
+                     "ldr x0, [%0, #24];"
 
-                     "ldr x0, [%0];"
-                     "ldr x0, [%0];"
-                     "ldr x0, [%0];"
-                     "ldr x0, [%0];" :: "r" (&a[i]) : "x0");
+                     "ldr x0, [%0, #32];"
+                     "ldr x0, [%0, #40];"
+                     "ldr x0, [%0, #48];"
+                     "ldr x0, [%0, #56];" :: "r" (&a[i]) : "x0");
     }
     return get_cpu_clock();
 }
@@ -204,6 +236,12 @@ __attribute__((always_inline)) inline uint64_t thread_copy_function(uint64_t sta
     for (size_t i = 0; i < n_elems; ++i) {
         b[i] = a[i];
     }
+    return get_cpu_clock();
+}
+
+__attribute__((always_inline)) inline uint64_t thread_memcpy_function(uint64_t start_time, double *a, double *b, size_t n_elems) {
+    while (get_cpu_clock() < start_time) {}
+    memcpy(b, a, n_elems * sizeof(double));
     return get_cpu_clock();
 }
 
@@ -222,10 +260,16 @@ void thread_function(thread_data *t_info) {
                 t_info->end_time = thread_read_function(t_info->start_time, (double *)t_info->buffer, t_info->size);
                 break;
             case WRITE_TEST:
-                t_info->end_time = thread_write_function(t_info->start_time, (double *)t_info->buffer, t_info->size);
+                t_info->end_time = thread_write_function(t_info->start_time, &t_info->start_time, (double *)t_info->buffer, t_info->size);
                 break;
             case COPY_TEST:
                 t_info->end_time = thread_copy_function(t_info->start_time, (double *)t_info->buffer, (double *) t_info->second_buffer, t_info->size);
+                break;
+            case MEMSET_TEST:
+                t_info->end_time = thread_memset_function(t_info->start_time, (double *)t_info->buffer, t_info->size);
+                break;
+            case MEMCPY_TEST:
+                t_info->end_time = thread_memcpy_function(t_info->start_time, (double *)t_info->buffer, (double *)t_info->second_buffer, t_info->size);
                 break;
         }
         t_info->rx_mutex.unlock(); // signal completion

@@ -19,9 +19,8 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 // write in GB/s
-void times_to_file(clock_t *times, size_t n_iterations, size_t n_bytes, std::string path) {
+void times_to_file(clock_t *times, size_t n_iterations, size_t n_bytes, std::string path, double freq = 1980000000.) {
     std::ofstream file(path);
-    const double freq = 1980000000.;
     for (size_t i = 0; i < n_iterations; ++i) {
         double elapsed = (double) times[i] / freq;
         // double elapsed = times[i] / 1000.;
@@ -186,7 +185,15 @@ __attribute__((always_inline)) inline uint64_t get_cpu_clock() {
     uint64_t tsc;
 
     asm volatile("isb" : : : "memory");
-    asm volatile("mrs %0, cntvct_el0" : "=r"(tsc));
+    asm volatile("mrs %0, cntvct_el0" : "=r"(tsc)); // alternative is cntpct_el0
+
+    return tsc;
+}
+
+__attribute__((always_inline)) __device__ inline clock_t get_gpu_clock() {
+    uint64_t tsc;
+
+    asm volatile("mov.u64 %0, %%globaltimer;" : "=l"(tsc));
 
     return tsc;
 }
@@ -204,7 +211,7 @@ double get_elapsed_milliseconds_clock(uint64_t start, uint64_t end) {
 
 void clock_granularity_test() {
     std::ofstream file("results/clock_granularity");
-    for (size_t i = 0; i < 1000000; ++i) {
+    for (size_t i = 0; i < 10000; ++i) {
         uint64_t start_clock = get_cpu_clock();
         uint64_t end_clock = get_cpu_clock();
         file << end_clock - start_clock << std::endl;
@@ -212,40 +219,85 @@ void clock_granularity_test() {
 }
 
 __global__ void clock_granularity_kernel(clock_t *out) {
-    for (size_t i = 0; i < 1000000; ++i) {
+    for (size_t i = 0; i < 10000; ++i) {
         clock_t start_clock = clock();
         clock_t end_clock = clock();
         out[i] = end_clock - start_clock;
     }
 }
 
+__global__ void global_clock_granularity_kernel(clock_t *out) {
+    for (size_t i = 0; i < 10000; ++i) {
+        clock_t start_clock = get_gpu_clock();
+        clock_t end_clock = get_gpu_clock();
+        out[i] = end_clock - start_clock;
+    }
+}
+
+__global__ void basic_loop_overhead_kernel(size_t n_iter, clock_t *measure, size_t *global_dummy) {
+    size_t dummy;
+
+    clock_t start = clock();
+
+    for (size_t i = 0; i < n_iter; ++i) {
+        dummy += i;
+    }
+
+    clock_t end = clock();
+
+    *measure = end - start;
+    *global_dummy = dummy;
+}
+
+void kernel_loop_overhead_test() {
+    clock_t measure;
+    size_t global_dummy;
+    std::ofstream file("results/kernel_loop_overhead");
+    for (size_t n_iter = 1; n_iter < 1 << 16; ++n_iter) {
+        basic_loop_overhead_kernel<<<1, 1>>>(n_iter, &measure, &global_dummy);
+        cudaDeviceSynchronize();
+        file << measure << std::endl;
+    }
+}
+
 void device_clock_granularity_test() {
-    std::ofstream file("results/device_clock_granularity");
-    clock_t *times = (clock_t *) malloc(1000000 * sizeof(clock_t));
-    clock_granularity_kernel<<<1, 1>>>(times);
-    cudaDeviceSynchronize();
-    for (size_t i = 0; i < 1000000; ++i) {
-        file << times[i] << std::endl;
+    clock_t *times = (clock_t *) malloc(10000 * sizeof(clock_t));
+    {
+        std::ofstream file("results/device_clock_granularity");
+        clock_granularity_kernel<<<1, 1>>>(times);
+        cudaDeviceSynchronize();
+        for (size_t i = 0; i < 10000; ++i) {
+            file << times[i] << std::endl;
+        }
+    }
+    {
+        std::ofstream file("results/device_global_clock_granularity");
+        global_clock_granularity_kernel<<<1, 1>>>(times);
+        cudaDeviceSynchronize();
+        for (size_t i = 0; i < 10000; ++i) {
+            file << times[i] << std::endl;
+        }
     }
     free(times);
 }
 
 
 void sleep_test() {
-    clock_granularity_test();
-    device_clock_granularity_test();
+    // clock_granularity_test();
+    // device_clock_granularity_test();
+    // kernel_loop_overhead_test();
 
     uint64_t start_clock = get_cpu_clock();
     uint64_t end_clock = get_cpu_clock();
     std::cout << "[INFO] overhead of cycles: " << end_clock - start_clock << std::endl;
 
-    start_clock = get_cpu_clock();
-    sleep(1);
-    end_clock = get_cpu_clock();
+    // start_clock = get_cpu_clock();
+    // sleep(1);
+    // end_clock = get_cpu_clock();
 
     std::cout << "[INFO] CPU timer runs at " << (double) get_cpu_freq() / 1000000. << "MHz" << std::endl;
     std::cout << "[INFO] GPU timer runs at " << (double) get_gpu_clock_khz() / 1000. << "MHz" << std::endl;
-    std::cout << "[INFO] target 1000.0, elapsed: " << get_elapsed_milliseconds_clock(start_clock, end_clock) << std::endl;
+    // std::cout << "[INFO] target 1000.0, elapsed: " << get_elapsed_milliseconds_clock(start_clock, end_clock) << std::endl;
     
     start_clock = get_cpu_clock();
     asm volatile("mov x0, #10000;"
@@ -257,6 +309,39 @@ void sleep_test() {
     end_clock = get_cpu_clock();
 
     std::cout << "[INFO] loop iteration overhead: " << get_elapsed_milliseconds_clock(start_clock, end_clock) * 100. << "ns (" << (double) (end_clock - start_clock) / 10000 << " cycles)" << std::endl;
+}
+
+// launch with one thread per block
+__global__ void gpu_clock_test_kernel(clock_t *global_timesteps, clock_t *local_timesteps) {
+    __shared__ clock_t gt[1024];
+    __shared__ clock_t lt[1024];
+
+    for (size_t i = 0; i < 1024; ++i) {
+        gt[i] = get_gpu_clock();
+        lt[i] = clock();
+    }
+
+    for (size_t i = 0; i < 1024; ++i) {
+        global_timesteps[i + blockIdx.x * 1024] = gt[i];
+        local_timesteps[i + blockIdx.x * 1024] = lt[i];
+    }
+}
+
+void gpu_clock_test() {
+    clock_t *global_timesteps = (clock_t *) alloca(sizeof(clock_t) * 1024 * 264);
+    clock_t *local_timesteps = (clock_t *) alloca(sizeof(clock_t) * 1024 * 264);
+
+    gpu_clock_test_kernel<<<264, 1>>>(global_timesteps, local_timesteps);
+    gpuErrchk(cudaDeviceSynchronize());
+
+    for (size_t i = 0; i < 264; ++i) { // for each block/file
+        std::ofstream global_file("results/gpu_clock/global/" + std::to_string(i));
+        std::ofstream local_file("results/gpu_clock/local/" + std::to_string(i));
+        for (size_t j = 0; j < 1024; ++j) {
+            global_file << global_timesteps[j + i * 1024] << std::endl;
+            local_file << local_timesteps[j + i * 1024] << std::endl;
+        }
+    }
 }
 
 #define TIME_FUNCTION_EXECUTION(TIME, FUNC, ...) {\
