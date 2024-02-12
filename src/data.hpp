@@ -33,7 +33,7 @@ struct ManagedMemoryDataFactory {
 void initialize_memory_pointer_chase(uint8_t *data, size_t size) {
     size_t num_pages = CEIL(size, PAGE_SIZE);
 
-    size_t page_sequence[num_pages];
+    size_t *page_sequence = (size_t *) malloc(sizeof(size_t) * num_pages);
     page_sequence[0] = 0; // first page is the first page
     _random_init(0, num_pages - 1);
 
@@ -55,8 +55,13 @@ void initialize_memory_pointer_chase(uint8_t *data, size_t size) {
         if (i < num_pages - 1) {
             // set the last cacheline to point to the next page in the sequence
             *((uint8_t **) itr) = data + PAGE_SIZE * page_sequence[i + 1];
+        } else {
+            *((uint8_t **) itr) = data;
         }
+
     }
+
+    free(page_sequence);
 
     invalidate_all(data, size);
 }
@@ -71,6 +76,8 @@ void initialize_memory_page_chase(uint8_t *data, size_t size) {
         *((uint8_t **) itr) = new_addr;
         itr = new_addr;
     }
+
+    *((uint8_t **) itr) = data;
 
     invalidate_all(data, size);
 }
@@ -95,6 +102,7 @@ struct MmapDataFactory {
     MmapDataFactory(size_t n_bytes) {
         size = n_bytes;
         data = (uint8_t *) mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        madvise(data, size, MADV_HUGEPAGE);
     }
 
     ~MmapDataFactory() {

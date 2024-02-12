@@ -39,12 +39,12 @@ __global__ void latency_kernel(uint8_t *in, size_t n_elem, size_t n_iter, double
             itr = *((uint8_t **) itr);
         }
         clock_t end = clock();
+        time[iter] = end - start;
 
         if (tid > 1) { // dummy work
             printf("%u ", *itr);
         }
 
-        time[iter] = end - start;
     }
 }
 
@@ -64,7 +64,6 @@ void latency_test_host_template(size_t n_iter, size_t n_bytes, size_t device, Th
     }
 
     for (size_t i = 0; i < n_iter; ++i) {
-        invalidate_all(factory.data, n_bytes);
         times[i] = latency_function(factory.data, n_elem);
     }
 

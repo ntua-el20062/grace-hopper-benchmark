@@ -85,7 +85,7 @@ __global__ void device_copy_kernel(double *a, double *b, size_t n_elems) {
 }
 
 __global__ void device_read_kernel_sync(double *data, size_t n_elems, size_t n_iter, clock_t *time, clock_t *sync) {
-    double dummy;
+    uint64_t dummy;
     __shared__ clock_t clocks[1024];
 
     size_t tid = threadIdx.x + blockDim.x * blockIdx.x;
@@ -103,8 +103,12 @@ __global__ void device_read_kernel_sync(double *data, size_t n_elems, size_t n_i
         // ------------------------
 
         #pragma unroll 8
-        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
-            dummy += data[i];
+        for (size_t outer = 0; outer < 1024; ++outer) {
+            for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+                uint64_t v;
+                asm volatile("ld.ca.u64 %0, [%1];" : "=l"(v) : "l"(&data[i]));
+                dummy ^= v;
+            }
         }
 
         clock_t end = get_gpu_clock();
@@ -123,7 +127,7 @@ __global__ void device_read_kernel_sync(double *data, size_t n_elems, size_t n_i
         // ----------------------
     }
     if (*sync == 0) {
-        printf("%lf ", dummy);
+        printf("%lu ", dummy);
     }
 }
 
@@ -286,12 +290,21 @@ __global__ void device_copy_kernel_sync(double *a, double *b, size_t n_elems, si
     }
 }
 
-__global__ void device_read_kernel_block(double *data, size_t n_elems, size_t n_iter, clock_t *time) {
-    double dummy;
+__global__ void device_read_kernel_block(uint64_t *data, size_t n_elems, size_t n_iter, clock_t *time) {
+    uint64_t dummy[8];
     __shared__ clock_t clocks[1025];
 
-    size_t tid = threadIdx.x + blockDim.x * blockIdx.x;
+    assert(blockIdx.x == 0);
 
+    size_t tid = threadIdx.x;
+
+    size_t per_thread = n_elems / 1024;
+
+    for (size_t i = tid; i < n_elems; i += 1024) {
+        dummy[0] ^= data[i];
+    }
+
+    uint64_t *ptr = data + tid;
     for (size_t iter = 0; iter < n_iter; ++iter) {
         // SYNC -------------------
         __syncthreads();
@@ -301,13 +314,22 @@ __global__ void device_read_kernel_block(double *data, size_t n_elems, size_t n_
         while (clock() < start) {}
         // ------------------------
 
-        #pragma unroll 8
-        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
-            dummy += data[i];
+        for (size_t j = 0; j < 8192; ++j) {
+            for (size_t i = 0; i < per_thread; i += 8) {
+                dummy[0] ^= ptr[i];
+                dummy[1] ^= ptr[i + 1];
+                dummy[2] ^= ptr[i + 2];
+                dummy[3] ^= ptr[i + 3];
+
+                dummy[4] ^= ptr[i + 4];
+                dummy[5] ^= ptr[i + 5];
+                dummy[6] ^= ptr[i + 6];
+                dummy[7] ^= ptr[i + 7];
+            }
         }
 
         clock_t end = clock();
-        clocks[threadIdx.x] = end - start;
+        clocks[threadIdx.x] = end;
 
         // STORE -----------------
         __syncthreads();
@@ -316,12 +338,12 @@ __global__ void device_read_kernel_block(double *data, size_t n_elems, size_t n_
             for (size_t i = 1; i < blockDim.x; ++i) {
                 t = max(t, clocks[i]);
             }
-            time[iter] = t;
+            time[iter] = (t - start) / 8192;
         }
         // ----------------------
     }
-    if (tid == (size_t)-1) {
-        printf("%lf ", dummy);
+    if (tid > clocks[tid]) {
+        printf("%lu ", dummy[tid%8]);
     }
 }
 
@@ -392,50 +414,61 @@ __global__ void device_copy_kernel_block(double *a, double *b, size_t n_elems, s
     }
 }
 
-__global__ void device_read_kernel_single(double *a, size_t n_elems, size_t n_iter, clock_t *time) {
-    double dummy;
+__global__ void device_read_kernel_single(uint64_t *a, size_t n_elems, size_t n_iter, volatile clock_t *time) {
+    uint64_t dummy[8];
     
-    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
     for (size_t iter = 0; iter < n_iter; ++iter) {
         clock_t start = clock();
-        #pragma unroll 8
-        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
-            dummy += a[i];
+        for (size_t i = 0; i < n_elems; i += 8) {
+            dummy[0] ^= a[i];
+            dummy[1] ^= a[i+1];
+            dummy[2] ^= a[i+2];
+            dummy[3] ^= a[i+3];
+            dummy[4] ^= a[i+4];
+            dummy[5] ^= a[i+5];
+            dummy[6] ^= a[i+6];
+            dummy[7] ^= a[i+7];
         }
         clock_t end = clock();
         time[iter] = end - start;
-        if (tid == (size_t)-1) {
-            printf("%lf ", dummy);
+        if (*time < 8) {
+            printf("%lu ", dummy[*time]);
         }
     }
 }
 
 __global__ void device_write_kernel_single(double *a, size_t n_elems, size_t n_iter, clock_t *time) {
-    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
-    __shared__ clock_t times_buffer[1024];
-
     for (size_t iter = 0; iter < n_iter; ++iter) {
         clock_t start = clock();
-        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
-            a[i] = 0;
+        for (size_t i = 0; i < n_elems; i += 8) {
+            a[i] = i;
+            a[i+1] = i;
+            a[i+2] = i;
+            a[i+3] = i;
+            a[i+4] = i;
+            a[i+5] = i;
+            a[i+6] = i;
+            a[i+7] = i;
         }
         clock_t end = clock();
-        times_buffer[iter] = end - start;
-    }
-
-    for (size_t i = 0; i < n_iter; ++i) {
-        time[i] = times_buffer[i];
+        time[iter] = end - start;
     }
 }
 
 __global__ void device_copy_kernel_single(double *a, double *b, size_t n_elems, size_t n_iter, clock_t *time) {
-    size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
-
     for (size_t iter = 0; iter < n_iter; ++iter) {
         clock_t start = clock();
-        for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
+        for (size_t i = 0; i < n_elems; i += 8) {
             b[i] = a[i];
+            b[i+1] = a[i+1];
+            b[i+2] = a[i+2];
+            b[i+3] = a[i+3];
+
+            b[i+4] = a[i+4];
+            b[i+5] = a[i+5];
+            b[i+6] = a[i+6];
+            b[i+7] = a[i+7];
         }
         clock_t end = clock();
         time[iter] = end - start;
@@ -489,14 +522,16 @@ void read_test_device_template(size_t n_iter, size_t n_bytes, int grid_size, siz
     cudaDeviceReset();
     ALLOC factory(n_bytes);
     dispatch_command(target, command, factory.data, n_bytes);
+    // cudaMemPrefetchAsync(factory.data, n_bytes, 0, 0);
     if (grid_size == 0) { // run with only one thread
         clock_t times[n_iter];
-        device_read_kernel_single<<<1, 1>>>((double *) factory.data, n_elems, n_iter, times);
+        device_read_kernel_single<<<1, 1>>>((uint64_t *) factory.data, n_elems, n_iter, times);
         cudaDeviceSynchronize();
         times_to_file(times, n_iter, n_bytes, "results/read/device/single/" + name);
     } else if (grid_size == 1) { // run with only one block
         clock_t times[n_iter];
-        device_read_kernel_block<<<1, 1024>>>((double *) factory.data, n_elems, n_iter, times);
+        cudaMemset(factory.data, 0x00, n_bytes);
+        device_read_kernel_block<<<1, 1024>>>((uint64_t *) factory.data, n_elems, n_iter, times);
         cudaDeviceSynchronize();
         times_to_file(times, n_iter, n_bytes, "results/read/device/block/" + name);
     } else {
@@ -512,7 +547,7 @@ void read_test_device_template(size_t n_iter, size_t n_bytes, int grid_size, siz
             for (size_t block_id = 1; block_id < grid_size; ++block_id) {
                 t = max(t, big_times[itr * grid_size + block_id]);
             }
-            small_times[itr] = t;
+            small_times[itr] = t / 1024;
         }
         times_to_file(small_times, n_iter, n_bytes, "results/read/device/" + name, 1000000000.);
         // for (size_t i = 0; i < n_iter; ++i) {
@@ -658,28 +693,8 @@ void write_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, s
     size_t n_elems = n_bytes / sizeof(double);
     ALLOC factory(n_bytes);
     dispatch_command(target, command, factory.data, n_bytes);
-    if (n_threads == 1) {
-        double *a = (double *) factory.data;
-        for (size_t itr = 0; itr < n_iter; ++itr) {
-            clock_t start = get_cpu_clock();
-            for (size_t i = 0; i < n_elems; i += 8) {
-                asm volatile("str x0, [%0];"
-                            "str x0, [%0, #8];"
-                            "str x0, [%0, #16];"
-                            "str x0, [%0, #24];"
-
-                            "str x0, [%0, #32];"
-                            "str x0, [%0, #40];"
-                            "str x0, [%0, #48];"
-                            "str x0, [%0, #56];" :: "r" (&a[i]) :);
-            }
-            clock_t end = get_cpu_clock();
-            times[itr] = get_elapsed_milliseconds_clock(start, end);
-        }
-    } else {
-        for (size_t i = 0; i < n_iter; ++i) {
-            times[i] = time_test(WRITE_TEST, n_threads, factory.data, nullptr, n_elems);
-        }
+    for (size_t i = 0; i < n_iter; ++i) {
+        times[i] = time_test(WRITE_TEST, n_threads, factory.data, nullptr, n_elems) / 1024;
     }
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/write/host/" + name);
 }
@@ -702,28 +717,8 @@ void read_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, si
     size_t n_elems = n_bytes / sizeof(double);
     ALLOC factory(n_bytes);
     dispatch_command(device, command, factory.data, n_bytes);
-    if (n_threads == 1) {
-        double *a = (double *) factory.data;
-        for (size_t itr = 0; itr < n_iter; ++itr) {
-            clock_t start = get_cpu_clock();
-            for (size_t i = 0; i < n_elems; i += 8) {
-                asm volatile("ldr x0, [%0];"
-                            "ldr x0, [%0, #8];"
-                            "ldr x0, [%0, #16];"
-                            "ldr x0, [%0, #24];"
-
-                            "ldr x0, [%0, #32];"
-                            "ldr x0, [%0, #40];"
-                            "ldr x0, [%0, #48];"
-                            "ldr x0, [%0, #56];" :: "r" (&a[i]) : "x0");
-            }
-            clock_t end = get_cpu_clock();
-            times[itr] = get_elapsed_milliseconds_clock(start, end);
-        }
-    } else {
-        for (size_t i = 0; i < n_iter; ++i) {
-            times[i] = time_test(READ_TEST, n_threads, factory.data, nullptr, n_elems);
-        }
+    for (size_t i = 0; i < n_iter; ++i) {
+        times[i] = time_test(READ_TEST, n_threads, factory.data, nullptr, n_elems) / 1024;
     }
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/read/host/" + name);
 }
@@ -738,22 +733,8 @@ void copy_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, si
     DST_ALLOC dst(per_array_bytes);
     dispatch_command(src_target, src_mode, src.data, per_array_bytes);
     dispatch_command(dst_target, dst_mode, dst.data, per_array_bytes);
-
-    if (n_threads == 1) {
-        double *a = (double *) src.data;
-        double *b = (double *) dst.data;
-        for (size_t itr = 0; itr < n_iter; ++itr) {
-            clock_t start = get_cpu_clock();
-            for (size_t i = 0; i < n_elems; ++i) {
-                b[i] = a[i];
-            }
-            clock_t end = get_cpu_clock();
-            times[itr] = get_elapsed_milliseconds_clock(start, end);
-        }
-    } else {
-        for (size_t i = 0; i < n_iter; ++i) {
-            times[i] = time_test(COPY_TEST, n_threads, src.data, dst.data, n_elems);
-        }
+    for (size_t i = 0; i < n_iter; ++i) {
+        times[i] = time_test(COPY_TEST, n_threads, src.data, dst.data, n_elems) / 1024;
     }
     millisecond_times_to_gb_sec_file(times, n_iter, per_array_bytes, "results/copy/host/" + name);
 }

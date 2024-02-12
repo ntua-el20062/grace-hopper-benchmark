@@ -180,8 +180,10 @@ double time_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t 
 
     uint64_t max_end = 0;
     for (size_t i = 0; i < n_threads; ++i) {
-        max_end = std::max(max_end, end_times[i]);
+        //max_end = std::max(max_end, end_times[i]);
+        max_end += end_times[i];
     }
+    max_end /= n_threads;
 
     return get_elapsed_milliseconds_clock(nominal_start_time, max_end);
 }
@@ -191,50 +193,62 @@ void invalidate_all(uint8_t *buffer, size_t size) {
     prepare_memory(READ, cache_filler, sizeof(cache_filler));   // invalidate locally
 }
 
-__attribute__((always_inline)) inline uint64_t thread_write_function(uint64_t start_time, uint64_t *actual_time, double *a, size_t n_elems) {
-    do {
-        *actual_time = get_cpu_clock();
-    } while (*actual_time < start_time);
-    for (size_t i = 0; i < n_elems; i += 8) {
-        asm volatile("str x0, [%0];"
-                    "str x0, [%0, #8];"
-                    "str x0, [%0, #16];"
-                    "str x0, [%0, #24];"
+__attribute__((always_inline)) inline uint64_t thread_write_function(uint64_t start_time, double *a, size_t n_elems) {
+    while (get_cpu_clock() < start_time) {}
+    for (size_t outer = 0; outer < 1024; ++outer) {
+        for (size_t i = 0; i < n_elems; i += 8) {
+            asm volatile("str x0, [%0];"
+                        "str x0, [%0, #8];"
+                        "str x0, [%0, #16];"
+                        "str x0, [%0, #24];"
 
-                    "str x0, [%0, #32];"
-                    "str x0, [%0, #40];"
-                    "str x0, [%0, #48];"
-                    "str x0, [%0, #56];" :: "r" (&a[i]) :);
+                        "str x0, [%0, #32];"
+                        "str x0, [%0, #40];"
+                        "str x0, [%0, #48];"
+                        "str x0, [%0, #56];" :: "r" (&a[i]) :);
+        }
     }
     return get_cpu_clock();
 }
 
 __attribute__((always_inline)) inline uint64_t thread_memset_function(uint64_t start_time, double *a, size_t n_elems) {
     while (get_cpu_clock() < start_time) {}
-    memset(a, 0, n_elems * sizeof(double));
+    memset(a, 0xff, n_elems * sizeof(double)); // 0xff since setting to 0x00 does weird stuff
     return get_cpu_clock();
 }
 
 __attribute__((always_inline)) inline uint64_t thread_read_function(uint64_t start_time, double *a, size_t n_elems) {
     while (get_cpu_clock() < start_time) {}
-    for (size_t i = 0; i < n_elems; i += 8) {
-        asm volatile("ldr x0, [%0];"
-                     "ldr x0, [%0, #8];"
-                     "ldr x0, [%0, #16];"
-                     "ldr x0, [%0, #24];"
+    for (size_t outer = 0; outer < 1024; ++outer) {
+        for (size_t i = 0; i < n_elems; i += 8) {
+            asm volatile("ldr x0, [%0];"
+                        "ldr x0, [%0, #8];"
+                        "ldr x0, [%0, #16];"
+                        "ldr x0, [%0, #24];"
 
-                     "ldr x0, [%0, #32];"
-                     "ldr x0, [%0, #40];"
-                     "ldr x0, [%0, #48];"
-                     "ldr x0, [%0, #56];" :: "r" (&a[i]) : "x0");
+                        "ldr x0, [%0, #32];"
+                        "ldr x0, [%0, #40];"
+                        "ldr x0, [%0, #48];"
+                        "ldr x0, [%0, #56];" :: "r" (&a[i]) : "x0");
+        }
     }
     return get_cpu_clock();
 }
 
 __attribute__((always_inline)) inline uint64_t thread_copy_function(uint64_t start_time, double *a, double *b, size_t n_elems) {
     while (get_cpu_clock() < start_time) {}
-    for (size_t i = 0; i < n_elems; ++i) {
-        b[i] = a[i];
+    for (size_t outer = 0; outer < 1024; ++outer) {
+        for (size_t i = 0; i < n_elems; i += 8) {
+            b[i] = a[i];
+            b[i + 1] = a[i + 1];
+            b[i + 2] = a[i + 2];
+            b[i + 3] = a[i + 3];
+
+            b[i + 4] = a[i + 4];
+            b[i + 5] = a[i + 5];
+            b[i + 6] = a[i + 6];
+            b[i + 7] = a[i + 7];
+        }
     }
     return get_cpu_clock();
 }
@@ -260,7 +274,7 @@ void thread_function(thread_data *t_info) {
                 t_info->end_time = thread_read_function(t_info->start_time, (double *)t_info->buffer, t_info->size);
                 break;
             case WRITE_TEST:
-                t_info->end_time = thread_write_function(t_info->start_time, &t_info->start_time, (double *)t_info->buffer, t_info->size);
+                t_info->end_time = thread_write_function(t_info->start_time, (double *)t_info->buffer, t_info->size);
                 break;
             case COPY_TEST:
                 t_info->end_time = thread_copy_function(t_info->start_time, (double *)t_info->buffer, (double *) t_info->second_buffer, t_info->size);
@@ -288,6 +302,9 @@ void init_thread_array() {
         CPU_SET((i + 1), &cpuset); 
 
         pthread_setaffinity_np(cur->t->native_handle(), sizeof(cpu_set_t), &cpuset);
+        struct sched_param param;
+        param.sched_priority = 1;
+        pthread_setschedparam(cur->t->native_handle(), SCHED_FIFO, &param);
     }
 }
 

@@ -13,30 +13,38 @@
 __global__ void device_pong_kernel(cuda::std::atomic<int> &flag) {
     flag.store(FLAG_A, cuda::std::memory_order_release);
     for (size_t i = 0; i < 100; ++i) {
-        TIMES10(while (flag.load(cuda::std::memory_order_acquire) == FLAG_A);
-        flag.store(FLAG_A, cuda::std::memory_order_release);)
+        TIMES10(
+            while (flag.load(cuda::std::memory_order_acquire) == FLAG_A);
+            flag.store(FLAG_A, cuda::std::memory_order_release);
+        )
     }
 }
 
 void host_pong_function(std::atomic<int> &flag) {
     flag.store(FLAG_A, std::memory_order_release);
     for (size_t i = 0; i < 100; ++i) {
-        TIMES10(while (flag.load(std::memory_order_acquire) == FLAG_A);
-        flag.store(FLAG_A, std::memory_order_release);)
+        TIMES10(
+            while (flag.load(std::memory_order_acquire) == FLAG_A);
+            flag.store(FLAG_A, std::memory_order_release);
+        )
     }
 }
 
 __attribute__((always_inline)) inline void host_ping_function(std::atomic<int> &flag) {
     for (size_t i = 0; i < 100; ++i) {
-        TIMES10(flag.store(FLAG_B, std::memory_order_release);
-        while (flag.load(std::memory_order_acquire) == FLAG_B);)
+        TIMES10(
+            flag.store(FLAG_B, std::memory_order_release);
+            while (flag.load(std::memory_order_acquire) == FLAG_B);
+        )
     }
 }
 
 __attribute__((always_inline)) inline void host_ping_function(cuda::std::atomic<int> &flag) {
     for (size_t i = 0; i < 100; ++i) {
-        TIMES10(flag.store(FLAG_B, cuda::std::memory_order_release);
-        while (flag.load(cuda::std::memory_order_acquire) == FLAG_B);)
+        TIMES10(
+            flag.store(FLAG_B, cuda::std::memory_order_release);
+            while (flag.load(cuda::std::memory_order_acquire) == FLAG_B);
+        )
     }
 }
 
