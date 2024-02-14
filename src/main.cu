@@ -173,13 +173,15 @@ int main() {
     
     sleep_test();
 
-    init_thread_array();
+    // init_thread_array();
 
     // run_clock_analysis_host();
 
     // gpu_clock_test();
 
     // test_cache();
+
+    // run_cuda_memcpy_heatmap_tests();
 
     // run_stream_benchmark_device(1UL << 32, 5, 1);
     for (size_t i = 4096; i <= 1UL << 32; i = (size_t)((double) i * sqrt(sqrt(2)))) {
@@ -195,11 +197,12 @@ int main() {
         // run_copy_tests_device(10, i, 0, "", std::to_string(i));
         // run_read_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_write_tests_host(10, i, 1, "single/", std::to_string(i));
-        run_copy_tests_host(10, i, 1, "single/", std::to_string(i));
+        // run_copy_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_memset_tests_host(10, i, 64, "", std::to_string(i));
         // run_memcpy_tests_host(10, i, 64, "", std::to_string(i));
         // run_memset_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_memcpy_tests_host(10, i, 1, "single/", std::to_string(i));
+        // run_cuda_memcpy_tests(10, i, "", std::to_string(i));
     }
     // run_read_tests_device(10, 1UL << 32, 264, "", std::to_string(1UL << 32));
     // run_write_tests_device(10, 1UL << 32, 264, "", std::to_string(1UL << 32));
@@ -213,7 +216,7 @@ int main() {
     // run_read_tests_host(10, 1UL << 32, 64, "", std::to_string(1UL << 32));
     // run_write_tests_host(10, 1UL << 32, 64, "", std::to_string(1UL << 32));
     // run_copy_tests_host(10, 1UL << 32, 64, "", std::to_string(1UL << 32));
-    run_copy_tests_host(10, 1UL << 32, 1, "", std::to_string(1UL << 32));
+    // run_copy_tests_host(10, 1UL << 32, 1, "", std::to_string(1UL << 32));
     // run_stream_benchmark_host(5, 1UL << 32);
     // run_memset_tests_host(10, 1UL << 32, 64, "", std::to_string(1UL << 32));
     // run_memcpy_tests_host(10, 1UL << 32, 64, "", std::to_string(1UL << 32));
@@ -241,14 +244,14 @@ int main() {
     // run_latency_test_device<false>(100, 1UL << 32); std::cout << "done" << std::endl;
 
     // ------------- DEVICE LATENCY -------------
-    // for (size_t i = 4096; i <= 1UL << 32; i = (size_t)((double) i * sqrt(sqrt(2)))) {
-    //     i = CEIL(i, 64) * 64;
-    //     std::cout << i << std::endl;
-    //     // latency_test_device_template<false>(10, i, HOST_ID, WRITE, "results/latency/device/scalability/ddr/" + std::to_string(i));
-    //     // latency_test_device_template<false>(10, i, DEVICE_ID, WRITE, "results/latency/device/scalability/hbm/" + std::to_string(i));
-    //     latency_test_host_template<false>(100, i, HOST_ID, WRITE, "results/latency/host/scalability/ddr/" + std::to_string(i));
-    //     latency_test_host_template<false>(100, i, DEVICE_ID, WRITE, "results/latency/host/scalability/hbm/" + std::to_string(i));
-    // }
+    for (size_t i = 4096; i <= 1UL << 32; i = (size_t)((double) i * sqrt(sqrt(2)))) {
+        i = CEIL(i, 64) * 64;
+        std::cout << i << std::endl;
+        latency_test_device_template<false, true>(10, i, HOST_ID, WRITE, "results/latency/device/scalability/write/ddr/" + std::to_string(i));
+        latency_test_device_template<false, true>(10, i, DEVICE_ID, WRITE, "results/latency/device/scalability/write/hbm/" + std::to_string(i));
+        latency_test_host_template<false, true>(100, i, HOST_ID, WRITE, "results/latency/host/scalability/write/ddr/" + std::to_string(i));
+        latency_test_host_template<false, true>(100, i, DEVICE_ID, WRITE, "results/latency/host/scalability/write/hbm/" + std::to_string(i));
+    }
 
     // ------------- HOST SCALABILITY -------------
     // for (size_t n_threads = 1; n_threads <= 64; ++n_threads) {
@@ -301,5 +304,5 @@ int main() {
     //     // run_cudnn_conv_tests(100, i);
     // }
 
-    terminate_threads();
+    // terminate_threads();
 }

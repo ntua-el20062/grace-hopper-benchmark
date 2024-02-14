@@ -102,7 +102,6 @@ __global__ void device_read_kernel_sync(double *data, size_t n_elems, size_t n_i
         while (get_gpu_clock() < start) {}
         // ------------------------
 
-        #pragma unroll 8
         for (size_t outer = 0; outer < 1024; ++outer) {
             for (size_t i = tid; i < n_elems; i += blockDim.x * gridDim.x) {
                 uint64_t v;
@@ -799,4 +798,79 @@ void run_memcpy_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std:
     memcpy_test_host_template<MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, n_threads, HOST_ID, WRITE, DEVICE_ID, WRITE, base + "ddr_hbm/" + end);
     memcpy_test_host_template<MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, n_threads, DEVICE_ID, WRITE, DEVICE_ID, WRITE, base + "hbm_hbm/" + end);
     memcpy_test_host_template<MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, n_threads, DEVICE_ID, WRITE, HOST_ID, WRITE, base + "hbm_ddr/" + end);
+}
+
+
+// ---------------- CUDAMEMCPY TESTS --------------------------------
+template <typename SRC_ALLOC, typename DST_ALLOC>
+void cuda_memcpy_template(size_t n_iter, size_t n_bytes, size_t src_target, size_t dst_target, std::string name) {
+    double times[n_iter];
+
+    SRC_ALLOC src(n_bytes);
+    DST_ALLOC dst(n_bytes);
+    dispatch_command(src_target, WRITE, src.data, n_bytes);
+    dispatch_command(dst_target, WRITE, dst.data, n_bytes);
+    for (size_t i = 0; i < n_iter; ++i) {
+        uint64_t start = get_cpu_clock();
+        cudaMemcpy(dst.data, src.data, n_bytes, cudaMemcpyDefault);
+        cudaDeviceSynchronize();
+        uint64_t end = get_cpu_clock();
+        times[i] = get_elapsed_milliseconds_clock(start, end);
+
+    }
+    millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/memcpy/cuda/" + name);
+}
+
+void run_cuda_memcpy_tests(size_t n_iter, size_t n_bytes, std::string base, std::string end) {
+    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, base + "ddr_ddr/" + end);
+    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, base + "ddr_hbm/" + end);
+    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocDataFactory>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, base + "hbm_hbm/" + end);
+    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocHostDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, base + "hbm_ddr/" + end);
+}
+
+void run_cuda_memcpy_heatmap_tests() {
+    size_t n_iter = 10;
+    size_t n_bytes = 1UL << 33;
+
+    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/CMC_CMC");
+    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/CMC_CMH");
+    cuda_memcpy_template<CudaMallocDataFactory, MmapDataFactory>            (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/CMC_MMH");
+    cuda_memcpy_template<CudaMallocDataFactory, MmapDataFactory>            (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/CMC_MMD");
+    cuda_memcpy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/CMC_MGH");
+    cuda_memcpy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/CMC_MGD");
+
+    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/CMH_CMC");
+    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/CMH_CMH");
+    cuda_memcpy_template<CudaMallocHostDataFactory, MmapDataFactory>            (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/CMH_MMH");
+    cuda_memcpy_template<CudaMallocHostDataFactory, MmapDataFactory>            (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/CMH_MMD");
+    cuda_memcpy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/CMH_MGH");
+    cuda_memcpy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/CMH_MGD");
+
+    cuda_memcpy_template<MmapDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/MMH_CMC");
+    cuda_memcpy_template<MmapDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/MMH_CMH");
+    cuda_memcpy_template<MmapDataFactory, MmapDataFactory>            (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/MMH_MMH");
+    cuda_memcpy_template<MmapDataFactory, MmapDataFactory>            (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/MMH_MMD");
+    cuda_memcpy_template<MmapDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/MMH_MGH");
+    cuda_memcpy_template<MmapDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/MMH_MGD");
+
+    cuda_memcpy_template<MmapDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/MMD_CMC");
+    cuda_memcpy_template<MmapDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/MMD_CMH");
+    cuda_memcpy_template<MmapDataFactory, MmapDataFactory>            (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/MMD_MMH");
+    cuda_memcpy_template<MmapDataFactory, MmapDataFactory>            (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/MMD_MMD");
+    cuda_memcpy_template<MmapDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/MMD_MGH");
+    cuda_memcpy_template<MmapDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/MMD_MGD");
+
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/MGH_CMC");
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/MGH_CMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, MmapDataFactory>            (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/MGH_MMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, MmapDataFactory>            (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/MGH_MMD");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, HOST_ID, HOST_ID, "heatmap/MGH_MGH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, HOST_ID, DEVICE_ID, "heatmap/MGH_MGD");
+
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/MGD_CMC");
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/MGD_CMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, MmapDataFactory>            (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/MGD_MMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, MmapDataFactory>            (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/MGD_MMD");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, DEVICE_ID, HOST_ID, "heatmap/MGD_MGH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, DEVICE_ID, DEVICE_ID, "heatmap/MGD_MGD");
 }
