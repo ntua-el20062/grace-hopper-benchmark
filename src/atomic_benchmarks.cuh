@@ -10,75 +10,192 @@
 #define FLAG_A 0
 #define FLAG_B 1
 
-__global__ void device_pong_kernel(cuda::std::atomic<int> &flag) {
-    flag.store(FLAG_A, cuda::std::memory_order_release);
-    for (size_t i = 0; i < 100; ++i) {
-        TIMES10(
-            while (flag.load(cuda::std::memory_order_acquire) == FLAG_A);
-            flag.store(FLAG_A, cuda::std::memory_order_release);
-        )
+extern "C" {
+    void host_ping_function(std::atomic<uint8_t> *flag, double *time);
+    void host_pong_function(std::atomic<uint8_t> *flag);
+}
+
+__global__ void device_pong_kernel(cuda::std::atomic<uint8_t> *flag, uint *ret) {
+    uint val;
+    asm("mov.u32 %0, %smid;" : "=r"(val) );
+    *ret = val;
+    flag->store(FLAG_A);
+    uint8_t expected = FLAG_B;
+    for (size_t i = 0; i < 10000; ++i) {
+        while (!flag->compare_exchange_strong(expected, FLAG_A, cuda::std::memory_order_relaxed, cuda::std::memory_order_relaxed)) {
+            expected = FLAG_B;
+        }
     }
 }
 
-void host_pong_function(std::atomic<int> &flag) {
-    flag.store(FLAG_A, std::memory_order_release);
-    for (size_t i = 0; i < 100; ++i) {
-        TIMES10(
-            while (flag.load(std::memory_order_acquire) == FLAG_A);
-            flag.store(FLAG_A, std::memory_order_release);
-        )
+__global__ void device_ping_kernel(cuda::std::atomic<uint8_t> *flag, clock_t *time, uint *ret) {
+    uint val;
+    asm("mov.u32 %0, %smid;" : "=r"(val) );
+    *ret = val;
+    uint8_t expected = FLAG_A;
+    while (flag->load() == FLAG_B);
+
+    clock_t start = clock();
+    for (size_t i = 0; i < 10000; ++i) {
+        while (!flag->compare_exchange_strong(expected, FLAG_B, cuda::std::memory_order_relaxed, cuda::std::memory_order_relaxed)) {
+            expected = FLAG_A;
+        }
     }
+    clock_t end = clock();
+    *time = end - start;
 }
 
-__attribute__((always_inline)) inline void host_ping_function(std::atomic<int> &flag) {
-    for (size_t i = 0; i < 100; ++i) {
-        TIMES10(
-            flag.store(FLAG_B, std::memory_order_release);
-            while (flag.load(std::memory_order_acquire) == FLAG_B);
-        )
-    }
-}
-
-__attribute__((always_inline)) inline void host_ping_function(cuda::std::atomic<int> &flag) {
-    for (size_t i = 0; i < 100; ++i) {
-        TIMES10(
-            flag.store(FLAG_B, cuda::std::memory_order_release);
-            while (flag.load(cuda::std::memory_order_acquire) == FLAG_B);
-        )
-    }
-}
-
-double host_ping_device_pong_benchmark() {
-    cuda::std::atomic<int> flag{FLAG_B};
-
-    device_pong_kernel<<<1, 1>>>(flag);
-
-    // synchronize at the start
-    while (flag.load(cuda::std::memory_order_acquire) == FLAG_B);
+double host_ping_device_pong_benchmark(int cpu, int device) {
+    MmapDataFactory factory(128);
+    cuda::std::atomic<uint8_t> *flag = (cuda::std::atomic<uint8_t> *) factory.data;
+    new (flag) cuda::std::atomic<uint8_t>{FLAG_B};
 
     double time;
-    TIME_FUNCTION_EXECUTION(time, host_ping_function, flag);
+    std::thread t(host_ping_function, (std::atomic<uint8_t> *) flag, &time);
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+    pthread_setaffinity_np(t.native_handle(), sizeof(cpu_set_t), &cpuset);
+
+    uint ret;
+    cudaSetDevice(device);
+    device_pong_kernel<<<1, 1>>>(flag, &ret);
+
+    t.join();
+
+    cudaDeviceSynchronize();
+    cudaSetDevice(0);
     
     return time;
 }
 
-double host_ping_host_pong_benchmark() {
-    std::atomic<int> flag{FLAG_B};
+double device_ping_host_pong_benchmark(int cpu, int device) {
+    MmapDataFactory factory(128);
+    cuda::std::atomic<uint8_t> *flag = (cuda::std::atomic<uint8_t> *) factory.data;
+    new (flag) cuda::std::atomic<uint8_t>{FLAG_B};
 
-    std::thread t(host_pong_function, std::ref(flag));
+    std::thread t(host_pong_function, (std::atomic<uint8_t> *) flag);
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(1, &cpuset);  // set affinity to CPU 1
-
+    CPU_SET(cpu, &cpuset);
     pthread_setaffinity_np(t.native_handle(), sizeof(cpu_set_t), &cpuset);
-
-    // synchronize at the start
-    while (flag.load(std::memory_order_acquire) == FLAG_B);
-
-    double time;
-    TIME_FUNCTION_EXECUTION(time, host_ping_function, flag);
+    
+    clock_t time;
+    uint ret;
+    cudaSetDevice(device);
+    device_ping_kernel<<<1, 1>>>(flag, &time, &ret);
 
     t.join();
 
+    cudaDeviceSynchronize();
+    cudaSetDevice(0);
+    
+    return (double) time / (double) get_gpu_clock_khz();
+}
+
+double host_ping_host_pong_benchmark(int cpu_a, int cpu_b) {
+    MmapDataFactory factory(128);
+    auto *flag = (std::atomic<uint8_t> *) factory.data;
+    new (flag) std::atomic<uint8_t>{FLAG_B};
+
+    std::thread t_a(host_pong_function, flag);
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu_a, &cpuset);
+    pthread_setaffinity_np(t_a.native_handle(), sizeof(cpu_set_t), &cpuset);
+
+    double time;
+    std::thread t_b(host_ping_function, flag, &time);
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu_b, &cpuset);
+    pthread_setaffinity_np(t_b.native_handle(), sizeof(cpu_set_t), &cpuset);
+
+
+    t_a.join();
+    t_b.join();
+
     return time;
+}
+
+double device_ping_device_pong_benchmark(int device_a, int device_b) {
+    MmapDataFactory factory(128);
+    auto *flag = (cuda::std::atomic<uint8_t> *) factory.data;
+    new (flag) cuda::std::atomic<uint8_t>{FLAG_B};
+    cudaStream_t stream_a, stream_b;
+    clock_t time;
+
+    uint ret_ping;
+    cudaSetDevice(device_a);
+    cudaStreamCreate(&stream_a);
+    device_ping_kernel<<<1, 1, 0, stream_a>>>(flag, &time, &ret_ping);
+
+    uint ret_pong;
+    cudaSetDevice(device_b);
+    cudaStreamCreate(&stream_b);
+    device_pong_kernel<<<1, 1, 0, stream_b>>>(flag, &ret_pong);
+
+    cudaDeviceSynchronize();
+    cudaStreamDestroy(stream_b);
+    cudaSetDevice(device_a);
+    cudaDeviceSynchronize();
+    cudaStreamDestroy(stream_a);
+    cudaSetDevice(0);
+
+    if (device_a == device_b) {
+        printf("%u %u\n", ret_ping, ret_pong);
+    }
+    
+    return (double) time / (double) get_gpu_clock_khz();
+}
+
+void run_ping_pong_benchmarks(size_t n_iter) {
+    double times[n_iter];
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = host_ping_host_pong_benchmark(1, 2);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/host_host");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = host_ping_host_pong_benchmark(1, 72);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/host_remote_host");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = host_ping_host_pong_benchmark(72, 144);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/host_remote_host_far");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = host_ping_device_pong_benchmark(1, 0);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/host_device");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = device_ping_host_pong_benchmark(1, 0);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/device_host");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = host_ping_device_pong_benchmark(1, 1);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/host_remote_device");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = host_ping_device_pong_benchmark(72, 2);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/host_remote_device_far");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = device_ping_device_pong_benchmark(0, 0);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/device_device");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = device_ping_device_pong_benchmark(0, 1);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/device_remote_device");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = device_ping_device_pong_benchmark(1, 2);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/device_remote_device_far");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = device_ping_host_pong_benchmark(1, 1);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/device_remote_host");
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        times[iter] = device_ping_host_pong_benchmark(72, 2);
+    }
+    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/device_remote_host_far");
 }

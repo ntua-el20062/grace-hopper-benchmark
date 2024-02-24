@@ -5,10 +5,11 @@
 #include "base_kernels.cuh"
 #include "measurement.hpp"
 
-#define NUM_THREADS 64
+#define NUM_THREADS 144
 
 constexpr size_t HOST_ID = (size_t) 0;
 constexpr size_t DEVICE_ID = (size_t) -1;
+constexpr size_t REMOTE_DEVICE_ID = (size_t) -2;
 
 class SpinLock {
     std::atomic_flag locked = ATOMIC_FLAG_INIT;
@@ -33,7 +34,6 @@ enum ThreadCommand {
     MEMCPY_TEST,
     TERMINATE
 };
-
 
 struct thread_data {
     std::unique_ptr<std::thread> t{nullptr};
@@ -113,7 +113,10 @@ __global__ void device_read_preparation_kernel(uint8_t *a, size_t size) {
 void dispatch_command(size_t t_id, ThreadCommand command, uint8_t *buffer, size_t size) {
     if (t_id == 0) {
         prepare_memory(command, buffer, size);
-    } else if (t_id == DEVICE_ID) {
+    } else if (t_id == DEVICE_ID || t_id == REMOTE_DEVICE_ID) {
+        if (t_id == REMOTE_DEVICE_ID) {
+            cudaSetDevice(1);
+        }
         switch (command) {
             case WRITE: {
                 device_write_preparation_kernel<<<264, 1024>>>(buffer, size);
@@ -125,6 +128,9 @@ void dispatch_command(size_t t_id, ThreadCommand command, uint8_t *buffer, size_
                 cudaDeviceSynchronize();
                 break;
             }
+        }
+        if (t_id == REMOTE_DEVICE_ID) {
+            cudaSetDevice(0);
         }
     } else {
         thread_data *cur = &thread_array[t_id - 1];
@@ -138,14 +144,14 @@ void dispatch_command(size_t t_id, ThreadCommand command, uint8_t *buffer, size_
     }
 }
 
-uint64_t run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems, uint64_t *start_times, uint64_t *end_times) {
+uint64_t run_test(ThreadCommand test, size_t n_threads, size_t initial_thread, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems, uint64_t *start_times, uint64_t *end_times) {
     assert(n_threads <= NUM_THREADS);
     size_t n_cachelines = n_elems / 8; // 8 doubles per cacheline
     size_t per_thread_n_cachelines = n_cachelines / n_threads;
     size_t remainder = n_cachelines % n_threads;
-    uint64_t nominal_start_time = get_cpu_clock() + ((1000000/32)*32); // cur + 1ms (multiple of clock resolution)
+    uint64_t nominal_start_time = get_cpu_clock() + 1000000000; // cur + 1ms (multiple of clock resolution)
     for (size_t i = 0; i < n_threads; ++i) {
-        thread_data *cur = &thread_array[i];
+        thread_data *cur = &thread_array[i+initial_thread];
         cur->command = test;
         cur->buffer = buffer;
         cur->second_buffer = second_buffer;
@@ -156,13 +162,13 @@ uint64_t run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t
     }
 
     for (size_t i = 0; i < n_threads; ++i) {
-        thread_data *cur = &thread_array[i];
+        thread_data *cur = &thread_array[i+initial_thread];
         cur->rx_mutex.lock();
         cur->tx_mutex.unlock(); // send command
     }
 
     for (size_t i = 0; i < n_threads; ++i) {
-        thread_data *cur = &thread_array[i];
+        thread_data *cur = &thread_array[i+initial_thread];
         cur->rx_mutex.lock(); // wait until thread is done
         cur->rx_mutex.unlock();
         start_times[i] = cur->start_time;
@@ -172,18 +178,18 @@ uint64_t run_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t
     return nominal_start_time;
 }
 
-double time_test(ThreadCommand test, size_t n_threads, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems) {
+double time_test(ThreadCommand test, size_t n_threads, size_t initial_thread, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems) {
     uint64_t start_times[n_threads];
     uint64_t end_times[n_threads];
 
-    uint64_t nominal_start_time = run_test(test, n_threads, buffer, second_buffer, n_elems, start_times, end_times);
+    uint64_t nominal_start_time = run_test(test, n_threads, initial_thread, buffer, second_buffer, n_elems, start_times, end_times);
 
     uint64_t max_end = 0;
     for (size_t i = 0; i < n_threads; ++i) {
-        //max_end = std::max(max_end, end_times[i]);
-        max_end += end_times[i];
+        max_end = std::max(max_end, end_times[i]);
+        // max_end += end_times[i];
     }
-    max_end /= n_threads;
+    // max_end /= n_threads;
 
     return get_elapsed_milliseconds_clock(nominal_start_time, max_end);
 }
@@ -293,13 +299,13 @@ void thread_function(thread_data *t_info) {
 void init_thread_array() {
     for (size_t i = 0; i < NUM_THREADS; ++i) {
         thread_data *cur = &thread_array[i];
-        cur->t_id = i + 1;
+        cur->t_id = i;
         cur->start_time = 0;
         cur->tx_mutex.lock();
         cur->t = std::make_unique<std::thread>(thread_function, cur);
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
-        CPU_SET((i + 1), &cpuset); 
+        CPU_SET(i, &cpuset); 
 
         pthread_setaffinity_np(cur->t->native_handle(), sizeof(cpu_set_t), &cpuset);
         struct sched_param param;

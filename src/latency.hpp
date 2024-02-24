@@ -109,12 +109,11 @@ __global__ void latency_write_kernel(uint8_t *in, size_t n_elem, size_t n_iter, 
     }
 }
 
-template <bool IS_PAGE, bool IS_WRITE>
-void latency_test_host_template(size_t n_iter, size_t n_bytes, size_t device, ThreadCommand command, std::string name) {
+template <bool IS_PAGE, bool IS_WRITE, typename ALLOC>
+void latency_test_host_template(size_t n_iter, size_t n_bytes, std::string name) {
     double times[n_iter];
 
-    MmapDataFactory factory(n_bytes);
-    dispatch_command(device, command, factory.data, n_bytes);
+    ALLOC factory(n_bytes);
     size_t n_elem;
     if constexpr (IS_PAGE) {
         initialize_memory_page_chase(factory.data, n_bytes);
@@ -141,17 +140,18 @@ void run_latency_test_host(size_t n_iter, size_t n_bytes) {
     if (!IS_PAGE) {
         base += "fine/";
     }
-    latency_test_host_template<IS_PAGE>(n_iter, n_bytes, HOST_ID, WRITE, base + "host/ddr");
-    latency_test_host_template<IS_PAGE>(n_iter, n_bytes, DEVICE_ID, WRITE, base + "host/hbm");
+    latency_test_host_template<IS_PAGE, false, HOST_MEM>(n_iter, n_bytes, base + "host/ddr");
+    latency_test_host_template<IS_PAGE, false, DEVICE_MEM>(n_iter, n_bytes, base + "host/hbm");
+    latency_test_host_template<IS_PAGE, false, REMOTE_HOST_MEM>(n_iter, n_bytes, base + "host/ddr_remote");
+    latency_test_host_template<IS_PAGE, false, REMOTE_DEVICE_MEM>(n_iter, n_bytes, base + "host/hbm_remote");
 }
 
-template <bool IS_PAGE, bool IS_WRITE>
-void latency_test_device_template(size_t n_iter, size_t n_bytes, size_t device, ThreadCommand command, std::string name) {
+template <bool IS_PAGE, bool IS_WRITE, typename ALLOC>
+void latency_test_device_template(size_t n_iter, size_t n_bytes, std::string name) {
     double gpu_clock = get_gpu_clock_khz();
     double times[n_iter];
 
-    MmapDataFactory factory(n_bytes);
-    dispatch_command(device, command, factory.data, n_bytes);
+    ALLOC factory(n_bytes);
     size_t n_elem;
     if constexpr (IS_PAGE) {
         initialize_memory_page_chase(factory.data, n_bytes);
@@ -181,8 +181,8 @@ void run_latency_test_device(size_t n_iter, size_t n_bytes) {
     if (!IS_PAGE) {
         base += "fine/";
     }
-    latency_test_device_template<IS_PAGE, false>(n_iter, n_bytes, HOST_ID, WRITE, base + "device/ddr");
-    latency_test_device_template<IS_PAGE, false>(n_iter, n_bytes, DEVICE_ID, WRITE, base + "device/hbm");
-    latency_test_device_template<IS_PAGE, true>(n_iter, n_bytes, HOST_ID, WRITE, base + "device/ddr");
-    latency_test_device_template<IS_PAGE, true>(n_iter, n_bytes, DEVICE_ID, WRITE, base + "device/hbm");
+    latency_test_device_template<IS_PAGE, false, HOST_MEM>(n_iter, n_bytes, base + "device/ddr");
+    latency_test_device_template<IS_PAGE, false, DEVICE_MEM>(n_iter, n_bytes, base + "device/hbm");
+    latency_test_device_template<IS_PAGE, false, REMOTE_HOST_MEM>(n_iter, n_bytes, base + "device/ddr_remote");
+    latency_test_device_template<IS_PAGE, false, REMOTE_DEVICE_MEM>(n_iter, n_bytes, base + "device/hbm_remote");
 }

@@ -13,6 +13,24 @@
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <numa.h>
+
+#define HOST_MEM NumaDataFactory<0>
+#define DEVICE_MEM NumaDataFactory<4>
+#define REMOTE_HOST_MEM NumaDataFactory<1>
+#define REMOTE_DEVICE_MEM NumaDataFactory<12>
+#define FAR_HOST_MEM NumaDataFactory<2>
+#define FAR_DEVICE_MEM NumaDataFactory<20>
+
+// #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+// inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=false)
+// {
+//    if (code != cudaSuccess) 
+//    {
+//       fprintf(stdout,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+//       if (abort) exit(code);
+//    }
+// }
 
 constexpr int BLOCK_SIZE = 256;
 
@@ -110,6 +128,22 @@ struct MmapDataFactory {
     }
 };
 
+template <int NODE>
+struct NumaDataFactory {
+    uint8_t *data = nullptr;
+    size_t size = 0;
+
+    NumaDataFactory(size_t n_bytes) {
+        data = (uint8_t *) numa_alloc_onnode(n_bytes, NODE);
+        madvise(data, n_bytes, MADV_HUGEPAGE);
+        size = n_bytes;
+    }
+
+    ~NumaDataFactory() {
+        numa_free(data, size);
+    }
+};
+
 struct MmioDataFactory {
     uint8_t *data = nullptr;
     size_t size = 0;
@@ -141,6 +175,22 @@ struct CudaMallocDataFactory {
 
     ~CudaMallocDataFactory() {
         cudaFree(data);
+    }
+};
+
+struct RemoteCudaMallocDataFactory {
+    uint8_t *data = nullptr;
+
+    RemoteCudaMallocDataFactory(size_t size) {
+        cudaSetDevice(1);
+        cudaMalloc(&data, size);
+        cudaSetDevice(0);
+    }
+
+    ~RemoteCudaMallocDataFactory() {
+        cudaSetDevice(1);
+        cudaFree(data);
+        cudaSetDevice(0);
     }
 };
 

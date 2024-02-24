@@ -9,9 +9,10 @@
 // #include <cudnn.h>
 #include <thrust/reduce.h>
 #include <thrust/execution_policy.h>
-// #include <arm_compute/runtime/NEON/NEFunctions.h>
-// #include <arm_compute/runtime/Tensor.h>
-// #include <arm_compute/core/Types.h>
+#ifdef OPENBLAS
+#include <cblas.h>
+#include <openblas_config.h>
+#endif
 
 cublasHandle_t cublas;
 // cudnnHandle_t cudnn;
@@ -41,14 +42,15 @@ void fill_random(T *arr, size_t n_bytes) {
     }
 }
 
+template <typename A_ALLOC, typename B_ALLOC, typename C_ALLOC>
 void cublas_gemm_template(size_t n_iter, size_t n_bytes, size_t a_target, size_t b_target, size_t c_target, std::string name) {
     double times[n_iter];
     size_t n_elems = n_bytes / sizeof(float);
     size_t matrix_side = std::sqrt(n_elems);
 
-    MmapDataFactory A(n_elems * sizeof(float));
-    MmapDataFactory B(n_elems * sizeof(float));
-    MmapDataFactory C(n_elems * sizeof(float));
+    A_ALLOC A(n_elems * sizeof(float));
+    B_ALLOC B(n_elems * sizeof(float));
+    C_ALLOC C(n_elems * sizeof(float));
     dispatch_command(a_target, WRITE, A.data, n_elems * sizeof(float));
     dispatch_command(b_target, WRITE, B.data, n_elems * sizeof(float));
     dispatch_command(c_target, WRITE, C.data, n_elems * sizeof(float));
@@ -77,66 +79,178 @@ void cublas_gemm_template(size_t n_iter, size_t n_bytes, size_t a_target, size_t
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/apps/gemm/cublas/" + name);
 }
 
-// void arm_compute_gemm_template(size_t n_iter, size_t n_bytes, size_t a_target, size_t b_target, size_t c_target, std::string name) {
-//     double times[n_iter];
-//     size_t n_elems = n_bytes / sizeof(float);
-//     size_t matrix_side = std::sqrt(n_elems);
+#ifdef OPENBLAS
+template <typename A_ALLOC, typename B_ALLOC, typename C_ALLOC>
+void openblas_gemm_template(size_t n_iter, size_t n_bytes, size_t a_target, size_t b_target, size_t c_target, std::string name) {
+    double times[n_iter];
+    size_t n_elems = n_bytes / sizeof(float);
+    size_t matrix_side = std::sqrt(n_elems);
 
-//     MmapDataFactory A(n_elems * sizeof(float));
-//     MmapDataFactory B(n_elems * sizeof(float));
-//     MmapDataFactory C(n_elems * sizeof(float));
-//     dispatch_command(a_target, WRITE, A.data, n_elems * sizeof(float));
-//     dispatch_command(b_target, WRITE, B.data, n_elems * sizeof(float));
-//     dispatch_command(c_target, WRITE, C.data, n_elems * sizeof(float));
+    float alpha = 1.0;
+    float beta = 0.0;
 
-//     fill_random((float *) A.data, n_elems * sizeof(float));
-//     fill_random((float *) B.data, n_elems * sizeof(float));
+    A_ALLOC A(n_elems * sizeof(float));
+    B_ALLOC B(n_elems * sizeof(float));
+    C_ALLOC C(n_elems * sizeof(float));
+    dispatch_command(a_target, WRITE, A.data, n_elems * sizeof(float));
+    dispatch_command(b_target, WRITE, B.data, n_elems * sizeof(float));
+    dispatch_command(c_target, WRITE, C.data, n_elems * sizeof(float));
+
+    fill_random((float *) A.data, n_elems * sizeof(float));
+    fill_random((float *) B.data, n_elems * sizeof(float));
     
-//     arm_compute::Tensor tA;
-//     arm_compute::Tensor tB;
-//     arm_compute::Tensor tC;
+    openblas_set_num_threads(72);
 
-//     const arm_compute::TensorShape shapeA(matrix_size, matrix_size);
-//     const arm_compute::TensorShape shapeB(matrix_size, matrix_size);
-//     const arm_compute::TensorShape shapeC(matrix_size, matrix_size);
+    for (size_t iter = 0; iter < n_iter; ++iter) {
+        uint64_t start = get_cpu_clock();
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                matrix_side, matrix_side, matrix_side, alpha,
+                (float *) A.data, matrix_side,
+                (float *) B.data, matrix_side, beta,
+                (float *) C.data, matrix_side);
+        uint64_t end = get_cpu_clock();
+        times[iter] = get_elapsed_milliseconds_clock(start, end);
+    }
 
-//     // Initialize arm_compute::tensors with the defined shapes
-//     tA.allocator()->init(arm_compute::TensorInfo(shapeA, 1, DataType::F32));
-//     tB.allocator()->init(arm_compute::TensorInfo(shapeB, 1, DataType::F32));
-//     tC.allocator()->init(arm_compute::TensorInfo(shapeC, 1, DataType::F32));
-
-//     NEONScheduler::get().default_init();
-//     arm_compute::NEGEMM gemm;
-//     gemm.configure(&tA, &tB, nullptr, &tC, 1.0f, 0.0f);
-
-
-//     for (size_t iter = 0; iter < n_iter; ++iter) {
-//         uint64_t start = get_cpu_clock();
-//         gemm.run();
-//         uint64_t end = get_cpu_clock();
-//         times[iter] = get_elapsed_milliseconds_clock(start, end);
-//     }
-
-//     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/apps/gemm/arm_compute/" + name);
-// }
-
-void run_cublas_gemm_tests(size_t n_iter, size_t n_bytes) {
-    cublas_gemm_template(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr/" + std::to_string(n_bytes)); // ddr uniform
-    cublas_gemm_template(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, DEVICE_ID, "hbm/" + std::to_string(n_bytes)); // hbm uniform
-    cublas_gemm_template(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_hbm_ddr/" + std::to_string(n_bytes)); // hbm -> ddr
-    cublas_gemm_template(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_ddr_hbm/" + std::to_string(n_bytes)); // ddr->hbm
-    cublas_gemm_template(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_ddr/" + std::to_string(n_bytes)); // het->ddr
-    cublas_gemm_template(n_iter, n_bytes, DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_ddr_hbm/" + std::to_string(n_bytes)); // het->hbm
+    millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/apps/gemm/openblas/" + name);
 }
 
-// void run_arm_compute_gemm_tests(size_t n_iter, size_t n_bytes) {
-//     arm_compute_gemm_template(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr/" + std::to_string(n_bytes)); // ddr uniform
-//     arm_compute_gemm_template(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, DEVICE_ID, "hbm/" + std::to_string(n_bytes)); // hbm uniform
-//     arm_compute_gemm_template(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_hbm_ddr/" + std::to_string(n_bytes)); // hbm -> ddr
-//     arm_compute_gemm_template(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_ddr_hbm/" + std::to_string(n_bytes)); // ddr->hbm
-//     arm_compute_gemm_template(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_ddr/" + std::to_string(n_bytes)); // het->ddr
-//     arm_compute_gemm_template(n_iter, n_bytes, DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_ddr_hbm/" + std::to_string(n_bytes)); // het->hbm
-// }
+void run_openblas_gemm_tests(size_t n_iter, size_t n_bytes) {
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_ddr_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_ddr_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, DEVICE_ID, "ddr_hbm_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_hbm_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, REMOTE_DEVICE_ID, "ddr_hbm_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_ddr_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_hbm_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, DEVICE_ID, "ddr_hbm_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "ddr_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_ddr_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_ddr_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, DEVICE_ID, "hbm_hbm_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_hbm_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, REMOTE_DEVICE_ID, "hbm_hbm_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_ddr_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_hbm_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, DEVICE_ID, "hbm_hbm_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "hbm_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_remote_ddr_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_remote_ddr_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_remote_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, DEVICE_ID, "ddr_remote_hbm_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_remote_hbm_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, REMOTE_DEVICE_ID, "ddr_remote_hbm_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_remote_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, DEVICE_ID, "ddr_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_remote_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "ddr_remote_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_remote_ddr_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_remote_ddr_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_remote_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, DEVICE_ID, "hbm_remote_hbm_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_remote_hbm_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, REMOTE_DEVICE_ID, "hbm_remote_hbm_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_remote_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, DEVICE_ID, "hbm_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_remote_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    openblas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "hbm_remote_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+
+}
+#endif
+
+void run_cublas_gemm_tests(size_t n_iter, size_t n_bytes) {
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_ddr_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_ddr_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_hbm_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, DEVICE_ID, "ddr_hbm_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_hbm_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, REMOTE_DEVICE_ID, "ddr_hbm_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_ddr_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_hbm_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, DEVICE_ID, "ddr_hbm_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "ddr_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_ddr_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_ddr_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_hbm_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, DEVICE_ID, "hbm_hbm_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_hbm_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, DEVICE_ID, REMOTE_DEVICE_ID, "hbm_hbm_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_ddr_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, HOST_ID, HOST_ID, "hbm_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_hbm_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, DEVICE_ID, "hbm_hbm_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, DEVICE_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "hbm_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_remote_ddr_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_remote_ddr_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_remote_hbm_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, DEVICE_ID, "ddr_remote_hbm_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, DEVICE_ID, HOST_ID, "ddr_remote_hbm_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, DEVICE_ID, REMOTE_DEVICE_ID, "ddr_remote_hbm_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, DEVICE_ID, "ddr_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, HOST_ID, HOST_ID, "ddr_remote_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, HOST_ID, HOST_ID, REMOTE_DEVICE_ID, "ddr_remote_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, DEVICE_ID, "ddr_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, HOST_ID, "ddr_remote_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<NumaDataFactory<1>, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, HOST_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "ddr_remote_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_remote_ddr_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_remote_ddr_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_remote_hbm_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, DEVICE_ID, "hbm_remote_hbm_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, HOST_ID, "hbm_remote_hbm_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, DEVICE_ID, REMOTE_DEVICE_ID, "hbm_remote_hbm_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, DEVICE_ID, "hbm_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, HOST_ID, "hbm_remote_ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, NumaDataFactory<1>, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, HOST_ID, REMOTE_DEVICE_ID, "hbm_remote_ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, DEVICE_ID, "hbm_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, NumaDataFactory<1>>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, HOST_ID, "hbm_remote_hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    cublas_gemm_template<MmapDataFactory, MmapDataFactory, MmapDataFactory>(n_iter, n_bytes, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, REMOTE_DEVICE_ID, "hbm_remote_hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+}
+
 
 // void cudnn_convolution_template(size_t n_iter, size_t n_bytes, size_t a_target, size_t b_target, size_t c_target, std::string name) {
 //     double times[n_iter];
@@ -264,13 +378,12 @@ void run_cublas_gemm_tests(size_t n_iter, size_t n_bytes) {
 //     cudnn_convolution_template(n_iter, n_bytes, DEVICE_ID, HOST_ID, DEVICE_ID, "ddr_hbm_hbm/" + std::to_string(n_bytes)); // het->hbm
 // }
 
-template <typename Policy>
-void thrust_reduction_template(size_t n_iter, size_t n_bytes, size_t target, const Policy &exec, std::string name) {
+template <typename ALLOC, typename Policy>
+void thrust_reduction_template(size_t n_iter, size_t n_bytes, const Policy &exec, std::string name) {
     double times[n_iter];
     size_t n_elems = n_bytes / sizeof(float);
 
-    MmapDataFactory factory(n_elems * sizeof(float));
-    dispatch_command(target, WRITE, factory.data, n_elems * sizeof(float));
+    ALLOC factory(n_elems * sizeof(float));
     float *data_ptr = (float *) factory.data;
     for (size_t i = 0; i < n_elems; ++i) {
         data_ptr[i] = i + 1;
@@ -291,8 +404,12 @@ void thrust_reduction_template(size_t n_iter, size_t n_bytes, size_t target, con
 }
 
 void run_thrust_reduction_benchmarks(size_t n_iter, size_t n_bytes) {
-    thrust_reduction_template<>(n_iter, n_bytes, HOST_ID, thrust::host, "host/ddr/" + std::to_string(n_bytes));
-    thrust_reduction_template<>(n_iter, n_bytes, DEVICE_ID, thrust::host, "host/hbm/" + std::to_string(n_bytes));
-    thrust_reduction_template<>(n_iter, n_bytes, HOST_ID, thrust::device, "device/ddr/" + std::to_string(n_bytes));
-    thrust_reduction_template<>(n_iter, n_bytes, DEVICE_ID, thrust::device, "device/hbm/" + std::to_string(n_bytes));
+    thrust_reduction_template<HOST_MEM>(n_iter, n_bytes, thrust::host, "host/ddr/" + std::to_string(n_bytes));
+    thrust_reduction_template<DEVICE_MEM>(n_iter, n_bytes, thrust::host, "host/hbm/" + std::to_string(n_bytes));
+    thrust_reduction_template<REMOTE_HOST_MEM>(n_iter, n_bytes, thrust::host, "host/ddr_remote/" + std::to_string(n_bytes));
+    thrust_reduction_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, thrust::host, "host/hbm_remote/" + std::to_string(n_bytes));
+    thrust_reduction_template<HOST_MEM>(n_iter, n_bytes, thrust::device, "device/ddr/" + std::to_string(n_bytes));
+    thrust_reduction_template<DEVICE_MEM>(n_iter, n_bytes, thrust::device, "device/hbm/" + std::to_string(n_bytes));
+    thrust_reduction_template<REMOTE_HOST_MEM>(n_iter, n_bytes, thrust::device, "device/ddr_remote/" + std::to_string(n_bytes));
+    thrust_reduction_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, thrust::device, "device/hbm_remote/" + std::to_string(n_bytes));
 }

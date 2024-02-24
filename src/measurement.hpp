@@ -5,18 +5,9 @@
 #include <iostream>
 #include <fstream>
 #include <omp.h>
+#include <vector>
 
 #define CEIL(a, b) (((a)+(b)-1)/(b))
-
-#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-{
-   if (code != cudaSuccess) 
-   {
-      fprintf(stdout,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-      if (abort) exit(code);
-   }
-}
 
 // write in GB/s
 void times_to_file(clock_t *times, size_t n_iterations, size_t n_bytes, std::string path, double freq = 1980000000.) {
@@ -117,7 +108,7 @@ double time_kernel_execution_clock(const void *kernel, int grid_size, int block_
     new_args[n_args] = (void *) &device_start;
     new_args[n_args + 1] = (void *) &device_stop;
 
-    gpuErrchk( cudaLaunchKernel(kernel, grid_size, block_size, new_args, shared_memory, stream) );
+    cudaLaunchKernel(kernel, grid_size, block_size, new_args, shared_memory, stream);
     cudaDeviceSynchronize();
 
     cudaMemcpy(start, device_start, sizeof(clock_t) * times_size, cudaMemcpyDeviceToHost);
@@ -281,23 +272,50 @@ void device_clock_granularity_test() {
     free(times);
 }
 
+__global__ void gpu_sleep(int gpu_freq_khz, double time_ms, clock_t *dummy) {
+    clock_t c = clock() + gpu_freq_khz * time_ms;
+    while (clock() < c);
+    *dummy = c;
+}
+
+void thread_clock_function(size_t n_iter, size_t tid) {
+    for (size_t i = 0; i < n_iter; ++i) {
+        sleep(1);
+        printf("%lu:\t%lu\n", tid, get_cpu_clock());
+    }
+}
 
 void sleep_test() {
     // clock_granularity_test();
     // device_clock_granularity_test();
     // kernel_loop_overhead_test();
 
+    // std::vector<size_t> tids = {1, 72, 144, 216};
+    // std::vector<std::thread> threads;
+    // for (auto tid : tids) {
+    //     threads.emplace_back(thread_clock_function, 10, tid);
+    //     cpu_set_t cpuset;
+    //     CPU_ZERO(&cpuset);
+    //     CPU_SET(0, &cpuset);
+    //     pthread_setaffinity_np(threads.back().native_handle(), sizeof(cpuset), &cpuset);
+    // }
+    // for (auto &t : threads) {
+    //     t.join();
+    // }
+
     uint64_t start_clock = get_cpu_clock();
     uint64_t end_clock = get_cpu_clock();
     std::cout << "[INFO] overhead of cycles: " << end_clock - start_clock << std::endl;
 
+    // clock_t dummy;
     // start_clock = get_cpu_clock();
-    // sleep(1);
+    // gpu_sleep<<<1, 1>>>(get_gpu_clock_khz(), 10000, &dummy);
+    // cudaDeviceSynchronize();
     // end_clock = get_cpu_clock();
 
     std::cout << "[INFO] CPU timer runs at " << (double) get_cpu_freq() / 1000000. << "MHz" << std::endl;
     std::cout << "[INFO] GPU timer runs at " << (double) get_gpu_clock_khz() / 1000. << "MHz" << std::endl;
-    // std::cout << "[INFO] target 1000.0, elapsed: " << get_elapsed_milliseconds_clock(start_clock, end_clock) << std::endl;
+    // std::cout << "[INFO] target 10000.0, elapsed: " << get_elapsed_milliseconds_clock(start_clock, end_clock) << std::endl;
     
     start_clock = get_cpu_clock();
     asm volatile("mov x0, #10000;"
@@ -332,7 +350,7 @@ void gpu_clock_test() {
     clock_t *local_timesteps = (clock_t *) alloca(sizeof(clock_t) * 1024 * 264);
 
     gpu_clock_test_kernel<<<264, 1>>>(global_timesteps, local_timesteps);
-    gpuErrchk(cudaDeviceSynchronize());
+    cudaDeviceSynchronize();
 
     for (size_t i = 0; i < 264; ++i) { // for each block/file
         std::ofstream global_file("results/gpu_clock/global/" + std::to_string(i));
