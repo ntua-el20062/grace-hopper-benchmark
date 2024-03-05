@@ -1,7 +1,7 @@
 #include "constants.hpp"
 #include "base_kernels.cuh"
 #include "measurement.hpp"
-#include "data.hpp"
+#include "memory.hpp"
 #include <string.h>
 #include <cstdlib>
 #include <stddef.h>

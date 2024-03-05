@@ -1,51 +1,7 @@
 #pragma once
 
 #include "thread_tools.hpp"
-#include "data.hpp"
-
-__attribute__((always_inline)) inline double latency_function(uint8_t *in, size_t n_elem) {    
-    uint64_t start = get_cpu_clock();
-    for (size_t i = 0; i < n_elem/8; ++i) {
-        asm volatile("ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
-
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];" : "=r" (in) : "r" ((uint8_t **) in) :);
-    }
-    uint64_t end = get_cpu_clock();
-
-    return get_elapsed_milliseconds_clock(start, end);
-}
-
-__attribute__((always_inline)) inline double latency_write_function(uint8_t *in, size_t n_elem) {    
-    uint64_t start = get_cpu_clock();
-    for (size_t i = 0; i < n_elem/8; ++i) {
-        asm volatile("ldr %0, [%1];"
-                     "str x0, [%1, #8];"
-                     "ldr %0, [%1];"
-                     "str x0, [%1, #8];"
-                     "ldr %0, [%1];"
-                     "str x0, [%1, #8];"
-                     "ldr %0, [%1];"
-                     "str x0, [%1, #8];"
-
-                     "ldr %0, [%1];"
-                     "str x0, [%1, #8];"
-                     "ldr %0, [%1];"
-                     "str x0, [%1, #8];"
-                     "ldr %0, [%1];"
-                     "str x0, [%1, #8];"
-                     "ldr %0, [%1];" 
-                     "str x0, [%1, #8];" : "=r" (in) : "r" ((uint8_t **) in) :);
-    }
-    uint64_t end = get_cpu_clock();
-
-    return get_elapsed_milliseconds_clock(start, end);
-}
+#include "memory.hpp"
 
 __global__ void latency_kernel(uint8_t *in, size_t n_elem, size_t n_iter, double *time) {
     int tid = threadIdx.x + blockDim.x * blockIdx.x;
@@ -110,7 +66,7 @@ __global__ void latency_write_kernel(uint8_t *in, size_t n_elem, size_t n_iter, 
 }
 
 template <bool IS_PAGE, bool IS_WRITE, typename ALLOC>
-void latency_test_host_template(size_t n_iter, size_t n_bytes, std::string name) {
+void latency_test_host_template(size_t n_iter, size_t n_bytes, size_t t_id, std::string name) {
     double times[n_iter];
 
     ALLOC factory(n_bytes);
@@ -123,13 +79,20 @@ void latency_test_host_template(size_t n_iter, size_t n_bytes, std::string name)
         n_elem = n_bytes / CACHELINE_SIZE;
     }
 
-    for (size_t i = 0; i < n_iter; ++i) {
-        if constexpr (IS_WRITE) {
-            times[i] = latency_write_function(factory.data, n_elem);
-        } else {
-            times[i] = latency_function(factory.data, n_elem);
-        }
+    if constexpr (IS_WRITE) {
+        dispatch_command(t_id, LATENCY_WRITE_TEST, factory.data, n_elem, (uint8_t *) times, n_iter);
+    } else {
+        dispatch_command(t_id, LATENCY_TEST, factory.data, n_elem, (uint8_t *) times, n_iter);
     }
+
+    // for (size_t i = 0; i < n_iter; ++i) {
+    //     if constexpr (IS_WRITE) {
+    //         times[i] = latency_write_function(factory.data, n_elem);
+    //     } else {
+    //         times[i] = latency_function(factory.data, n_elem);
+    //     }
+    //     prepare_memory(READ, cache_filler, sizeof(cache_filler));
+    // }
 
     millisecond_times_to_latency_ns_file(times, n_iter, n_elem, name);
 }
@@ -140,10 +103,12 @@ void run_latency_test_host(size_t n_iter, size_t n_bytes) {
     if (!IS_PAGE) {
         base += "fine/";
     }
-    latency_test_host_template<IS_PAGE, false, HOST_MEM>(n_iter, n_bytes, base + "host/ddr");
-    latency_test_host_template<IS_PAGE, false, DEVICE_MEM>(n_iter, n_bytes, base + "host/hbm");
-    latency_test_host_template<IS_PAGE, false, REMOTE_HOST_MEM>(n_iter, n_bytes, base + "host/ddr_remote");
-    latency_test_host_template<IS_PAGE, false, REMOTE_DEVICE_MEM>(n_iter, n_bytes, base + "host/hbm_remote");
+    latency_test_host_template<IS_PAGE, false, HOST_MEM>(n_iter, n_bytes, 0, base + "host/ddr");
+    latency_test_host_template<IS_PAGE, false, DEVICE_MEM>(n_iter, n_bytes, 0, base + "host/hbm");
+    latency_test_host_template<IS_PAGE, false, REMOTE_HOST_MEM>(n_iter, n_bytes, 0, base + "host/ddr_remote");
+    latency_test_host_template<IS_PAGE, false, REMOTE_DEVICE_MEM>(n_iter, n_bytes, 0, base + "host/hbm_remote");
+    latency_test_host_template<IS_PAGE, false, FAR_HOST_MEM>(n_iter, n_bytes, 72, base + "host/ddr_far");
+    latency_test_host_template<IS_PAGE, false, FAR_DEVICE_MEM>(n_iter, n_bytes, 72, base + "host/hbm_far");
 }
 
 template <bool IS_PAGE, bool IS_WRITE, typename ALLOC>

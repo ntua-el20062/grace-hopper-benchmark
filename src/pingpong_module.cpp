@@ -49,12 +49,12 @@ extern "C" {
     }
 
     void host_pong_function(std::atomic<uint8_t> *flag) {
-    uint8_t expected = FLAG_B;
-    flag->store(FLAG_A);
-    for (size_t i = 0; i < 10000; ++i) {
-        while (!flag->compare_exchange_strong(expected, FLAG_A, std::memory_order_relaxed, std::memory_order_relaxed)) {
-            expected = FLAG_B;
+        uint8_t expected = FLAG_B;
+        flag->store(FLAG_A);
+        for (size_t i = 0; i < 10000; ++i) {
+            while (!flag->compare_exchange_strong(expected, FLAG_A, std::memory_order_relaxed, std::memory_order_relaxed)) {
+                expected = FLAG_B;
+            }
         }
     }
-}
 }

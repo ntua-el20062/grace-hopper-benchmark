@@ -1,4 +1,4 @@
-#include "data.hpp"
+#include "memory.hpp"
 #include "thread_tools.hpp"
 #include <fstream>
 #include <cooperative_groups.h>

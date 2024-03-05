@@ -15,6 +15,28 @@ extern "C" {
     void host_pong_function(std::atomic<uint8_t> *flag);
 }
 
+void host_ping_function_volatile(volatile uint8_t *flag, double *time) {
+    while (*flag == FLAG_B);
+    uint8_t expected = FLAG_A;
+
+    uint64_t start = get_cpu_clock();
+    for (size_t i = 0; i < 10000; ++i) {
+        while (*flag == FLAG_B);
+        *flag = FLAG_B;
+    }
+    uint64_t end = get_cpu_clock();
+    *time = get_elapsed_milliseconds_clock(start, end);
+}
+
+void host_pong_function_volatile(volatile uint8_t *flag) {
+    uint8_t expected = FLAG_B;
+    *flag == FLAG_A;
+    for (size_t i = 0; i < 10000; ++i) {
+        while (*flag == FLAG_A);
+        *flag = FLAG_A;
+    }
+}
+
 __global__ void device_pong_kernel(cuda::std::atomic<uint8_t> *flag, uint *ret) {
     uint val;
     asm("mov.u32 %0, %smid;" : "=r"(val) );
@@ -40,6 +62,33 @@ __global__ void device_ping_kernel(cuda::std::atomic<uint8_t> *flag, clock_t *ti
         while (!flag->compare_exchange_strong(expected, FLAG_B, cuda::std::memory_order_relaxed, cuda::std::memory_order_relaxed)) {
             expected = FLAG_A;
         }
+    }
+    clock_t end = clock();
+    *time = end - start;
+}
+
+__global__ void device_pong_kernel_volatile(volatile uint8_t *flag, uint *ret) {
+    uint val;
+    asm("mov.u32 %0, %smid;" : "=r"(val) );
+    *ret = val;
+    *flag = FLAG_A;
+    for (size_t i = 0; i < 10000; ++i) {
+        while (*flag == FLAG_A);
+        *flag = FLAG_A;
+    }
+}
+
+__global__ void device_ping_kernel_volatile(volatile uint8_t *flag, clock_t *time, uint *ret) {
+    uint val;
+    asm("mov.u32 %0, %smid;" : "=r"(val) );
+    *ret = val;
+    uint8_t expected = FLAG_A;
+    while (*flag == FLAG_B);
+
+    clock_t start = clock();
+    for (size_t i = 0; i < 10000; ++i) {
+        while (*flag == FLAG_B);
+        *flag = FLAG_B;
     }
     clock_t end = clock();
     *time = end - start;

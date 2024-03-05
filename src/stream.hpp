@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data.hpp"
+#include "memory.hpp"
 #include "measurement.hpp"
 
 template <typename SRC_ALLOC, typename DST_ALLOC>

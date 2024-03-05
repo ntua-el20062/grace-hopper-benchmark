@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <numa.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <numaif.h>
 
 #define HOST_MEM NumaDataFactory<0>
 #define DEVICE_MEM NumaDataFactory<4>
@@ -21,16 +24,6 @@
 #define REMOTE_DEVICE_MEM NumaDataFactory<12>
 #define FAR_HOST_MEM NumaDataFactory<2>
 #define FAR_DEVICE_MEM NumaDataFactory<20>
-
-// #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-// inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=false)
-// {
-//    if (code != cudaSuccess) 
-//    {
-//       fprintf(stdout,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-//       if (abort) exit(code);
-//    }
-// }
 
 constexpr int BLOCK_SIZE = 256;
 
@@ -135,7 +128,9 @@ struct NumaDataFactory {
 
     NumaDataFactory(size_t n_bytes) {
         data = (uint8_t *) numa_alloc_onnode(n_bytes, NODE);
+        assert((unsigned long) data % PAGE_SIZE == 0);
         madvise(data, n_bytes, MADV_HUGEPAGE);
+        memset(data, 0xff, n_bytes);
         size = n_bytes;
     }
 

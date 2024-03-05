@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data.hpp"
+#include "memory.hpp"
 #include "base_kernels.cuh"
 #include "measurement.hpp"
 #include "thread_tools.hpp"
@@ -226,31 +226,31 @@ void run_clock_analysis_device() {
     free(end_times);
 }
 
-void run_clock_analysis_host() {
-    size_t n_threads = 2;
-    size_t n_iter = 10;
-    uint64_t start_times[n_iter * n_threads];
-    uint64_t end_times[n_iter * n_threads];
-    size_t n_bytes = 1UL << 32;
-    size_t n_elems = n_bytes / sizeof(double);
-    MmapDataFactory factory(n_bytes);
-    dispatch_command(HOST_ID, WRITE, factory.data, n_bytes);
-    for (size_t itr = 0; itr < n_iter; itr++) {
-        uint64_t nominal_time = run_test(WRITE_TEST, n_threads, 0, factory.data, nullptr, n_elems, &start_times[itr * n_threads], &end_times[itr * n_threads]);
-        for (size_t j = 0; j < n_threads; ++j) {
-            start_times[itr * n_threads + j] -= nominal_time;
-            end_times[itr * n_threads + j] -= nominal_time;
-        }
-    }
-    for (size_t itr = 0; itr < n_iter; itr++) {
-        std::ofstream start_file("results/clock_analysis/host/start/" + std::to_string(itr));
-        std::ofstream end_file("results/clock_analysis/host/end/" + std::to_string(itr));
-        for (size_t i = 0; i < n_threads; i++) {
-            start_file << start_times[itr * n_threads + i] << std::endl;
-            end_file << end_times[itr * n_threads + i] << std::endl;
-        }
-    }
-}
+// void run_clock_analysis_host() {
+//     size_t n_threads = 2;
+//     size_t n_iter = 10;
+//     uint64_t start_times[n_iter * n_threads];
+//     uint64_t end_times[n_iter * n_threads];
+//     size_t n_bytes = 1UL << 32;
+//     size_t n_elems = n_bytes / sizeof(double);
+//     MmapDataFactory factory(n_bytes);
+//     dispatch_command(HOST_ID, WRITE, factory.data, n_bytes);
+//     for (size_t itr = 0; itr < n_iter; itr++) {
+//         uint64_t nominal_time = run_test(WRITE_TEST, n_threads, 0, factory.data, nullptr, n_elems, &start_times[itr * n_threads], &end_times[itr * n_threads]);
+//         for (size_t j = 0; j < n_threads; ++j) {
+//             start_times[itr * n_threads + j] -= nominal_time;
+//             end_times[itr * n_threads + j] -= nominal_time;
+//         }
+//     }
+//     for (size_t itr = 0; itr < n_iter; itr++) {
+//         std::ofstream start_file("results/clock_analysis/host/start/" + std::to_string(itr));
+//         std::ofstream end_file("results/clock_analysis/host/end/" + std::to_string(itr));
+//         for (size_t i = 0; i < n_threads; i++) {
+//             start_file << start_times[itr * n_threads + i] << std::endl;
+//             end_file << end_times[itr * n_threads + i] << std::endl;
+//         }
+//     }
+// }
 
 __global__ void device_copy_kernel_sync(double *a, double *b, size_t n_elems, size_t n_iter, clock_t *time, clock_t *sync) {
     __shared__ clock_t clocks[1024];
@@ -676,7 +676,7 @@ void write_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, s
     size_t n_elems = n_bytes / sizeof(double);
     ALLOC factory(n_bytes);
     for (size_t i = 0; i < n_iter; ++i) {
-        times[i] = time_test(WRITE_TEST, n_threads, initial_thread, factory.data, nullptr, n_elems) / 1024;
+        times[i] = time_test(WRITE_TEST, n_threads, initial_thread, factory.data, nullptr, n_elems) / 1;
     }
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/write/host/" + name);
 }
@@ -698,8 +698,9 @@ void read_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, si
     double times[n_iter];
     size_t n_elems = n_bytes / sizeof(double);
     ALLOC factory(n_bytes);
+    dispatch_command(initial_thread, WRITE, factory.data, n_bytes);
     for (size_t i = 0; i < n_iter; ++i) {
-        times[i] = time_test(READ_TEST, n_threads, initial_thread, factory.data, nullptr, n_elems) / 1024;
+        times[i] = time_test(READ_TEST, n_threads, initial_thread, factory.data, nullptr, n_elems) / 1;
     }
     millisecond_times_to_gb_sec_file(times, n_iter, n_bytes, "results/read/host/" + name);
 }

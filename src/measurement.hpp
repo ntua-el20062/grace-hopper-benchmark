@@ -240,6 +240,22 @@ __global__ void basic_loop_overhead_kernel(size_t n_iter, clock_t *measure, size
     *global_dummy = dummy;
 }
 
+__global__ void get_clock_kernel(uint64_t *clock) {
+    *clock = get_gpu_clock();
+}
+
+void host_device_clock_test() {
+    uint64_t host_clock, device_clock;
+    cudaEvent_t e;
+    cudaEventCreate(&e);
+    get_clock_kernel<<<1, 1>>>(&device_clock),
+    cudaEventSynchronize(e);
+    host_clock = get_cpu_clock();
+    cudaEventDestroy(e);
+
+    printf("%lu\n%lu\n", host_clock, device_clock);
+}
+
 void kernel_loop_overhead_test() {
     clock_t measure;
     size_t global_dummy;
