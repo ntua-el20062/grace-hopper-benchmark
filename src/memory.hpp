@@ -129,12 +129,15 @@ struct NumaDataFactory {
     NumaDataFactory(size_t n_bytes) {
         data = (uint8_t *) numa_alloc_onnode(n_bytes, NODE);
         assert((unsigned long) data % PAGE_SIZE == 0);
-        madvise(data, n_bytes, MADV_HUGEPAGE);
+        // madvise(data, n_bytes, MADV_HUGEPAGE);
         memset(data, 0xff, n_bytes);
         size = n_bytes;
     }
 
     ~NumaDataFactory() {
+        int nodemask = 0;
+        get_mempolicy(&nodemask, NULL, 0, data, MPOL_F_NODE | MPOL_F_ADDR);
+        assert(nodemask == NODE);
         numa_free(data, size);
     }
 };
@@ -179,6 +182,7 @@ struct RemoteCudaMallocDataFactory {
     RemoteCudaMallocDataFactory(size_t size) {
         cudaSetDevice(1);
         cudaMalloc(&data, size);
+        cudaMemset(data, 0xff, size);
         cudaSetDevice(0);
     }
 

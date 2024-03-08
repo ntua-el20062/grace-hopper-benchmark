@@ -107,8 +107,8 @@ void run_latency_test_host(size_t n_iter, size_t n_bytes) {
     latency_test_host_template<IS_PAGE, false, DEVICE_MEM>(n_iter, n_bytes, 0, base + "host/hbm");
     latency_test_host_template<IS_PAGE, false, REMOTE_HOST_MEM>(n_iter, n_bytes, 0, base + "host/ddr_remote");
     latency_test_host_template<IS_PAGE, false, REMOTE_DEVICE_MEM>(n_iter, n_bytes, 0, base + "host/hbm_remote");
-    latency_test_host_template<IS_PAGE, false, FAR_HOST_MEM>(n_iter, n_bytes, 72, base + "host/ddr_far");
-    latency_test_host_template<IS_PAGE, false, FAR_DEVICE_MEM>(n_iter, n_bytes, 72, base + "host/hbm_far");
+    // latency_test_host_template<IS_PAGE, false, FAR_HOST_MEM>(n_iter, n_bytes, 72, base + "host/ddr_far");
+    // latency_test_host_template<IS_PAGE, false, FAR_DEVICE_MEM>(n_iter, n_bytes, 72, base + "host/hbm_far");
 }
 
 template <bool IS_PAGE, bool IS_WRITE, typename ALLOC>

@@ -9,7 +9,6 @@ void stream_test_device_template(size_t n_bytes, size_t n_iter, int grid_size, s
     size_t per_array_bytes = n_bytes / 2;
     size_t n_elems = per_array_bytes / sizeof(double);
 
-    cudaDeviceReset();
     DST_ALLOC dst(per_array_bytes);
     SRC_ALLOC src(per_array_bytes);
     dispatch_command(dst_target, dst_mode, dst.data, per_array_bytes);

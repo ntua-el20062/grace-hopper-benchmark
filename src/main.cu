@@ -144,9 +144,10 @@ __attribute__((always_inline)) inline uint64_t get_cyclecount() {
 
 int main() {
 #ifndef OPENBLAS
+    int main_thread = 287; // 287
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(287, &cpuset);
+    CPU_SET(main_thread, &cpuset);
     pthread_t current_thread = pthread_self();
     pthread_setaffinity_np(current_thread, sizeof(cpuset), &cpuset);
 
@@ -154,15 +155,13 @@ int main() {
     param.sched_priority = 1;
     pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
 
-    if (sched_getcpu() != 287) {
+    if (sched_getcpu() != main_thread) {
         std::cerr << "Setting CPU affinity failed!" << std::endl;
         exit(-1);
     } else {
         std::cout << "[INFO] thread pinning works" << std::endl;
     }
 #endif
-
-    cudaDeviceReset();
 
     int device_count = 0;
     cudaGetDeviceCount(&device_count);
@@ -171,6 +170,15 @@ int main() {
     printf("[INFO] cache fill buffer size: %lu\n", cache_filler);
     printf("[INFO] system page size: %lu (using %lu)\n", sysconf(_SC_PAGESIZE), PAGE_SIZE);
     std::cout << std::endl;
+
+    for (int i = 0; i < device_count; ++i) {
+        cudaSetDevice(i);
+        for (int j = 0; j < device_count; ++j) {
+            if (i == j) continue;
+            cudaDeviceEnablePeerAccess(j, 0);
+        }
+    }
+    cudaSetDevice(0);
 
     // host_device_clock_test();
 
@@ -181,7 +189,8 @@ int main() {
     
     // sleep_test();
 
-    // run_ping_pong_benchmarks(100);
+    // run_ping_pong_benchmarks<HOST_MEM>(100);
+    // run_ping_pong_benchmarks<DEVICE_MEM>(100);
 
     init_thread_array();
 
@@ -225,6 +234,8 @@ int main() {
     // test_cache();
 
     // run_cuda_memcpy_heatmap_tests();
+    // run_device_copy_heatmap_tests();
+    // run_host_copy_heatmap_tests();
 
     // run_stream_benchmark_device(1UL << 32, 5, 1);
     for (size_t i = 4096; i <= 1UL << 33; i = (size_t)((double) i * sqrt(2))) {
@@ -305,33 +316,34 @@ int main() {
     //     run_read_tests_device(10, i, 1, "", std::to_string(i));
     // }
 
-    // run_latency_test_host<true>(100, 1UL << 32); std::cout << "done" << std::endl;
-    // run_latency_test_device<true>(100, 1UL << 32); std::cout << "done" << std::endl;
+    run_latency_test_host<true>(100, 1UL << 32); std::cout << "done" << std::endl;
+    run_latency_test_device<true>(100, 1UL << 32); std::cout << "done" << std::endl;
     // run_latency_test_host<false>(100, 1UL << 32); std::cout << "done" << std::endl;
-    run_latency_test_device<false>(100, 1UL << 32); std::cout << "done" << std::endl;
+    // run_latency_test_device<false>(100, 1UL << 32); std::cout << "done" << std::endl;
 
     // ------------- LATENCY -------------
-    // for (size_t i = 4096; i <= 1UL << 32; i = (size_t)((double) i * sqrt(sqrt(2)))) {
-    //     i = CEIL(i, 64) * 64;
-    //     std::cout << i << std::endl;
-    //     // latency_test_device_template<false, false, HOST_MEM>(10, i, "results/latency/device/scalability/ddr/" + std::to_string(i));
-    //     // latency_test_device_template<false, false, DEVICE_MEM>(10, i, "results/latency/device/scalability/hbm/" + std::to_string(i));
-    //     // latency_test_host_template<false, false, HOST_MEM>(10, i, "results/latency/host/scalability/ddr/" + std::to_string(i));
-    //     // latency_test_host_template<false, false, DEVICE_MEM>(10, i, "results/latency/host/scalability/hbm/" + std::to_string(i));
-    //     // latency_test_device_template<false, false, REMOTE_HOST_MEM>(10, i, "results/latency/device/scalability/ddr_remote/" + std::to_string(i));
-    //     // latency_test_device_template<false, false, REMOTE_DEVICE_MEM>(10, i, "results/latency/device/scalability/hbm_remote/" + std::to_string(i));
-    //     // latency_test_host_template<false, false, REMOTE_HOST_MEM>(10, i, "results/latency/host/scalability/ddr_remote/" + std::to_string(i));
-    //     // latency_test_host_template<false, false, REMOTE_DEVICE_MEM>(10, i, "results/latency/host/scalability/hbm_remote/" + std::to_string(i));
+    for (size_t i = 6186319744; i <= 1UL << 35; i = (size_t)((double) i * sqrt(2))) {
+        // if (i == 6186319744) continue;
+        i = CEIL(i, 64) * 64;
+        // std::cout << i << std::endl;
+        // latency_test_device_template<false, false, HOST_MEM>(10, i, "results/latency/device/scalability/ddr/" + std::to_string(i));
+        // latency_test_device_template<false, false, DEVICE_MEM>(10, i, "results/latency/device/scalability/hbm/" + std::to_string(i));
+        // latency_test_host_template<false, false, HOST_MEM>(10, i, 0, "results/latency/host/scalability/ddr/" + std::to_string(i));
+        // latency_test_host_template<false, false, DEVICE_MEM>(10, i, 0, "results/latency/host/scalability/hbm/" + std::to_string(i));
+        // latency_test_device_template<false, false, REMOTE_HOST_MEM>(10, i, "results/latency/device/scalability/ddr_remote/" + std::to_string(i));
+        // latency_test_device_template<false, false, REMOTE_DEVICE_MEM>(10, i, "results/latency/device/scalability/hbm_remote/" + std::to_string(i));
+        // latency_test_host_template<false, false, REMOTE_HOST_MEM>(10, i, 0, "results/latency/host/scalability/ddr_remote/" + std::to_string(i));
+        // latency_test_host_template<false, false, REMOTE_DEVICE_MEM>(10, i, 0, "results/latency/host/scalability/hbm_remote/" + std::to_string(i));
 
-    //     latency_test_device_template<false, true, HOST_MEM>(10, i, "results/latency/device/scalability/write/ddr/" + std::to_string(i));
-    //     latency_test_device_template<false, true, DEVICE_MEM>(10, i, "results/latency/device/scalability/write/hbm/" + std::to_string(i));
-    //     latency_test_host_template<false, true, HOST_MEM>(10, i, "results/latency/host/scalability/write/ddr/" + std::to_string(i));
-    //     latency_test_host_template<false, true, DEVICE_MEM>(10, i, "results/latency/host/scalability/write/hbm/" + std::to_string(i));
-    //     latency_test_device_template<false, true, REMOTE_HOST_MEM>(10, i, "results/latency/device/scalability/write/ddr_remote/" + std::to_string(i));
-    //     latency_test_device_template<false, true, REMOTE_DEVICE_MEM>(10, i, "results/latency/device/scalability/write/hbm_remote/" + std::to_string(i));
-    //     latency_test_host_template<false, true, REMOTE_HOST_MEM>(10, i, "results/latency/host/scalability/write/ddr_remote/" + std::to_string(i));
-    //     latency_test_host_template<false, true, REMOTE_DEVICE_MEM>(10, i, "results/latency/host/scalability/write/hbm_remote/" + std::to_string(i));
-    // }
+        // latency_test_device_template<false, true, HOST_MEM>(10, i, "results/latency/device/scalability/write/ddr/" + std::to_string(i));
+        // latency_test_device_template<false, true, DEVICE_MEM>(10, i, "results/latency/device/scalability/write/hbm/" + std::to_string(i));
+        // latency_test_host_template<false, true, HOST_MEM>(10, i, "results/latency/host/scalability/write/ddr/" + std::to_string(i));
+        // latency_test_host_template<false, true, DEVICE_MEM>(10, i, "results/latency/host/scalability/write/hbm/" + std::to_string(i));
+        // latency_test_device_template<false, true, REMOTE_HOST_MEM>(10, i, "results/latency/device/scalability/write/ddr_remote/" + std::to_string(i));
+        // latency_test_device_template<false, true, REMOTE_DEVICE_MEM>(10, i, "results/latency/device/scalability/write/hbm_remote/" + std::to_string(i));
+        // latency_test_host_template<false, true, REMOTE_HOST_MEM>(10, i, "results/latency/host/scalability/write/ddr_remote/" + std::to_string(i));
+        // latency_test_host_template<false, true, REMOTE_DEVICE_MEM>(10, i, "results/latency/host/scalability/write/hbm_remote/" + std::to_string(i));
+    }
 
     // // ------------- HOST SCALABILITY -------------
     // for (size_t n_threads = 1; n_threads <= 64; ++n_threads) {

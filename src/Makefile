@@ -3,7 +3,7 @@ build:
 openblas:
 	nvcc main.cu -DOPENBLAS -g -O2 -arch=sm_90 -lnuma -lcublas -I/users/lfusco/code/OpenBLAS/installation/include -L/users/lfusco/code/OpenBLAS/installation/lib -lopenblas
 unopt:
-	nvcc -g -O0 -arch=sm_90 -lcublas main.cu
+	nvcc pingpong.o main.cu -g -O0 -arch=sm_90 -lnuma
 ptx:
 	nvcc -g -O2 -arch=sm_90 -ptx -lcublas main.cu -o main.ptx
 pre:
