@@ -189,14 +189,15 @@ uint64_t run_test(ThreadCommand test, size_t n_threads, size_t initial_thread, u
     assert(n_threads + initial_thread <= NUM_THREADS);
     size_t n_cachelines = n_elems / 8; // 8 doubles per cacheline
     size_t per_thread_n_cachelines = n_cachelines / n_threads;
-    size_t remainder = n_cachelines % n_threads;
+    // size_t remainder = n_cachelines % n_threads;
     uint64_t nominal_start_time = get_cpu_clock() + 1000000; // cur + 1ms
     for (size_t i = 0; i < n_threads; ++i) {
         thread_data *cur = &thread_array[i+initial_thread];
         cur->command = test;
         cur->buffer = buffer;
         cur->second_buffer = second_buffer;
-        cur->size = (per_thread_n_cachelines + (i < remainder ? 1 : 0)) * 8;
+        // cur->size = (per_thread_n_cachelines + (i < remainder ? 1 : 0)) * 8;
+        cur->size = per_thread_n_cachelines * 8;
         cur->start_time = nominal_start_time;
         buffer += cur->size * sizeof(double);
         second_buffer += cur->size * sizeof(double);
@@ -249,17 +250,14 @@ void invalidate_all(uint8_t *buffer, size_t size) {
 }
 
 uint64_t thread_write_function(uint64_t start_time, double *a, size_t n_elems) {
+    a -= 2;
     while (get_cpu_clock() < start_time) {}
     for (size_t i = 0; i < n_elems; i += 8) {
-        asm volatile("str x0, [%0];"
-                    "str x0, [%0, #8];"
-                    "str x0, [%0, #16];"
-                    "str x0, [%0, #24];"
+        asm volatile("stp x0, x1, [%0, #16];"
+                    "stp x0, x1, [%0, #32];"
 
-                    "str x0, [%0, #32];"
-                    "str x0, [%0, #40];"
-                    "str x0, [%0, #48];"
-                    "str x0, [%0, #56];" :: "r" (&a[i]) :);
+                    "stp x0, x1, [%0, #48];"
+                    "stp x0, x1, [%0, #64]!;" :: "r" (a) : "x0", "x1");
     }
     return get_cpu_clock();
 }
@@ -271,17 +269,14 @@ uint64_t thread_memset_function(uint64_t start_time, double *a, size_t n_elems) 
 }
 
 uint64_t thread_read_function(uint64_t start_time, double *a, size_t n_elems) {
+    a -= 2;
     while (get_cpu_clock() < start_time) {}
     for (size_t i = 0; i < n_elems; i += 8) {
-        asm volatile("ldr x0, [%0];"
-                    "ldr x0, [%0, #8];"
-                    "ldr x0, [%0, #16];"
-                    "ldr x0, [%0, #24];"
+        asm volatile("ldp x0, x1, [%0, #16];"
+                    "ldp x0, x1, [%0, #32];"
 
-                    "ldr x0, [%0, #32];"
-                    "ldr x0, [%0, #40];"
-                    "ldr x0, [%0, #48];"
-                    "ldr x0, [%0, #56];" :: "r" (&a[i]) : "x0");
+                    "ldp x0, x1, [%0, #48];"
+                    "ldp x0, x1, [%0, #64]!;" :: "r" (a) : "x0", "x1");
     }
     return get_cpu_clock();
 }

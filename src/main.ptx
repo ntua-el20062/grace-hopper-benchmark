@@ -29,8 +29,8 @@
 // _ZZ21gpu_clock_test_kernelPlS_E2gt has been demoted
 // _ZZ21gpu_clock_test_kernelPlS_E2lt has been demoted
 // _ZZ27device_read_kernel_detailedPdmmPlE12times_vector has been demoted
-// _ZZ23device_read_kernel_syncPdmmPlS0_E6clocks has been demoted
-// _ZZ24device_write_kernel_syncPdmmPlS0_E6clocks has been demoted
+// _ZZ23device_read_kernel_syncP10ulonglong4mmPlS1_E6clocks has been demoted
+// _ZZ24device_write_kernel_syncP10ulonglong2mmPlS1_E6clocks has been demoted
 // _ZZ23device_copy_kernel_syncPdS_mmPlS0_E6clocks has been demoted
 .global .align 1 .b8 __unnamed_1[85] = {118, 111, 105, 100, 32, 100, 101, 118, 105, 99, 101, 95, 114, 101, 97, 100, 95, 107, 101, 114, 110, 101, 108, 95, 98, 108, 111, 99, 107, 40, 117, 110, 115, 105, 103, 110, 101, 100, 32, 108, 111, 110, 103, 32, 42, 44, 32, 117, 110, 115, 105, 103, 110, 101, 100, 32, 108, 111, 110, 103, 44, 32, 117, 110, 115, 105, 103, 110, 101, 100, 32, 108, 111, 110, 103, 44, 32, 108, 111, 110, 103, 32, 42, 41};
 // _ZZ24device_read_kernel_blockPmmmPlE6clocks has been demoted
@@ -1073,10 +1073,9 @@ $L__BB13_9:
 	bra.uni 	$L__BB13_9;
 
 }
-	// .globl	_Z18device_pong_kernelPN4cuda3std3__46atomicIhEEPj
-.visible .entry _Z18device_pong_kernelPN4cuda3std3__46atomicIhEEPj(
-	.param .u64 _Z18device_pong_kernelPN4cuda3std3__46atomicIhEEPj_param_0,
-	.param .u64 _Z18device_pong_kernelPN4cuda3std3__46atomicIhEEPj_param_1
+	// .globl	_Z18device_pong_kernelPN4cuda3std3__46atomicIhEE
+.visible .entry _Z18device_pong_kernelPN4cuda3std3__46atomicIhEE(
+	.param .u64 _Z18device_pong_kernelPN4cuda3std3__46atomicIhEE_param_0
 )
 {
 	.local .align 1 .b8 	__local_depot14[3];
@@ -1084,27 +1083,21 @@ $L__BB13_9:
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<15>;
 	.reg .b16 	%rs<16>;
-	.reg .b32 	%r<15>;
-	.reg .b64 	%rd<29>;
+	.reg .b32 	%r<14>;
+	.reg .b64 	%rd<27>;
 
 
 	mov.u64 	%SPL, __local_depot14;
-	ld.param.u64 	%rd14, [_Z18device_pong_kernelPN4cuda3std3__46atomicIhEEPj_param_0];
-	ld.param.u64 	%rd16, [_Z18device_pong_kernelPN4cuda3std3__46atomicIhEEPj_param_1];
-	cvta.to.global.u64 	%rd17, %rd16;
+	ld.param.u64 	%rd14, [_Z18device_pong_kernelPN4cuda3std3__46atomicIhEE_param_0];
 	add.u64 	%rd1, %SPL, 0;
 	add.u64 	%rd2, %SPL, 1;
 	add.u64 	%rd3, %SPL, 2;
 	// begin inline asm
-	mov.u32 %r5, %smid;
-	// end inline asm
-	st.global.u32 	[%rd17], %r5;
-	// begin inline asm
 	fence.sc.sys;
 	// end inline asm
-	mov.u32 	%r14, 0;
+	mov.u32 	%r13, 0;
 	// begin inline asm
-	st.relaxed.sys.b32 [%rd14], %r14;
+	st.relaxed.sys.b32 [%rd14], %r13;
 	// end inline asm
 	mov.u16 	%rs15, 1;
 	st.local.u8 	[%rd3], %rs15;
@@ -1118,23 +1111,23 @@ $L__BB14_1:
 	st.local.u8 	[%rd2], %rs15;
 
 $L__BB14_2:
-	cvt.u32.u16 	%r11, %rs15;
-	and.b32  	%r2, %r11, 255;
-	mov.u32 	%r10, 0;
+	cvt.u32.u16 	%r10, %rs15;
+	and.b32  	%r2, %r10, 255;
+	mov.u32 	%r9, 0;
 	// begin inline asm
-	atom.cas.relaxed.sys.b32 %r8,[%rd14],%r2,%r10;
+	atom.cas.relaxed.sys.b32 %r7,[%rd14],%r2,%r9;
 	// end inline asm
-	setp.eq.s32 	%p2, %r8, %r2;
-	cvt.u16.u32 	%rs4, %r8;
+	setp.eq.s32 	%p2, %r7, %r2;
+	cvt.u16.u32 	%rs4, %r7;
 	st.local.u8 	[%rd1], %rs4;
 	@%p2 bra 	$L__BB14_9;
 
-	mov.u64 	%rd25, 0;
+	mov.u64 	%rd23, 0;
 
 $L__BB14_4:
-	add.s64 	%rd5, %rd1, %rd25;
-	add.s64 	%rd6, %rd3, %rd25;
-	setp.eq.s64 	%p3, %rd25, 1;
+	add.s64 	%rd5, %rd1, %rd23;
+	add.s64 	%rd6, %rd3, %rd23;
+	setp.eq.s64 	%p3, %rd23, 1;
 	@%p3 bra 	$L__BB14_8;
 
 	ld.local.u8 	%rs5, [%rd5];
@@ -1143,7 +1136,7 @@ $L__BB14_4:
 	@%p4 bra 	$L__BB14_7;
 
 	setp.le.u16 	%p5, %rs5, %rs6;
-	add.s64 	%rd25, %rd25, 1;
+	add.s64 	%rd23, %rd23, 1;
 	@%p5 bra 	$L__BB14_4;
 
 $L__BB14_7:
@@ -1152,50 +1145,49 @@ $L__BB14_7:
 	bra.uni 	$L__BB14_9;
 
 $L__BB14_8:
-	mov.u32 	%r13, 255;
+	mov.u32 	%r12, 255;
 	// begin inline asm
-	atom.and.relaxed.sys.b32 %r12,[%rd14],%r13;
+	atom.and.relaxed.sys.b32 %r11,[%rd14],%r12;
 	// end inline asm
 
 $L__BB14_9:
 	mov.pred 	%p14, 0;
 	@%p2 bra 	$L__BB14_14;
 
-	mov.u64 	%rd26, 1;
-	mov.u64 	%rd27, %rd2;
-	mov.u64 	%rd28, %rd3;
+	mov.u64 	%rd24, 1;
+	mov.u64 	%rd25, %rd2;
+	mov.u64 	%rd26, %rd3;
 
 $L__BB14_11:
-	setp.eq.s64 	%p8, %rd26, 0;
+	setp.eq.s64 	%p8, %rd24, 0;
 	@%p8 bra 	$L__BB14_2;
 
-	ld.local.u8 	%rs8, [%rd27];
-	ld.local.u8 	%rs9, [%rd28];
+	ld.local.u8 	%rs8, [%rd25];
+	ld.local.u8 	%rs9, [%rd26];
 	setp.lt.u16 	%p10, %rs8, %rs9;
 	mov.pred 	%p14, -1;
 	@%p10 bra 	$L__BB14_14;
 
-	add.s64 	%rd28, %rd28, 1;
-	add.s64 	%rd27, %rd27, 1;
+	add.s64 	%rd26, %rd26, 1;
+	add.s64 	%rd25, %rd25, 1;
 	setp.le.u16 	%p12, %rs8, %rs9;
-	add.s64 	%rd26, %rd26, -1;
+	add.s64 	%rd24, %rd24, -1;
 	@%p12 bra 	$L__BB14_11;
 
 $L__BB14_14:
 	@%p14 bra 	$L__BB14_17;
 
-	add.s32 	%r14, %r14, 1;
-	setp.lt.u32 	%p13, %r14, 10000;
+	add.s32 	%r13, %r13, 1;
+	setp.lt.u32 	%p13, %r13, 10000;
 	@%p13 bra 	$L__BB14_1;
 
 	ret;
 
 }
-	// .globl	_Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj
-.visible .entry _Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj(
-	.param .u64 _Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj_param_0,
-	.param .u64 _Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj_param_1,
-	.param .u64 _Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj_param_2
+	// .globl	_Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPl
+.visible .entry _Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPl(
+	.param .u64 _Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPl_param_0,
+	.param .u64 _Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPl_param_1
 )
 {
 	.local .align 1 .b8 	__local_depot15[3];
@@ -1203,22 +1195,16 @@ $L__BB14_14:
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<16>;
 	.reg .b16 	%rs<19>;
-	.reg .b32 	%r<15>;
-	.reg .b64 	%rd<35>;
+	.reg .b32 	%r<14>;
+	.reg .b64 	%rd<33>;
 
 
 	mov.u64 	%SPL, __local_depot15;
-	ld.param.u64 	%rd15, [_Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj_param_0];
-	ld.param.u64 	%rd16, [_Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj_param_1];
-	ld.param.u64 	%rd17, [_Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPlPj_param_2];
-	cvta.to.global.u64 	%rd18, %rd17;
+	ld.param.u64 	%rd15, [_Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPl_param_0];
+	ld.param.u64 	%rd16, [_Z18device_ping_kernelPN4cuda3std3__46atomicIhEEPl_param_1];
 	add.u64 	%rd1, %SPL, 0;
 	add.u64 	%rd2, %SPL, 1;
 	add.u64 	%rd3, %SPL, 2;
-	// begin inline asm
-	mov.u32 %r5, %smid;
-	// end inline asm
-	st.global.u32 	[%rd18], %r5;
 	mov.u16 	%rs10, 0;
 	st.local.u8 	[%rd3], %rs10;
 
@@ -1227,17 +1213,17 @@ $L__BB15_1:
 	fence.sc.sys;
 	// end inline asm
 	// begin inline asm
-	ld.acquire.sys.b32 %r6,[%rd15];
+	ld.acquire.sys.b32 %r5,[%rd15];
 	// end inline asm
-	cvt.u16.u32 	%rs11, %r6;
+	cvt.u16.u32 	%rs11, %r5;
 	and.b16  	%rs12, %rs11, 255;
 	setp.eq.s16 	%p2, %rs12, 1;
 	@%p2 bra 	$L__BB15_1;
 
 	// begin inline asm
-	mov.u64 	%rd23, %clock64;
+	mov.u64 	%rd21, %clock64;
 	// end inline asm
-	mov.u32 	%r14, 0;
+	mov.u32 	%r13, 0;
 	mov.u16 	%rs18, 0;
 	bra.uni 	$L__BB15_3;
 
@@ -1249,23 +1235,23 @@ $L__BB15_3:
 	st.local.u8 	[%rd2], %rs18;
 
 $L__BB15_4:
-	cvt.u32.u16 	%r11, %rs18;
-	and.b32  	%r2, %r11, 255;
-	mov.u32 	%r10, 1;
+	cvt.u32.u16 	%r10, %rs18;
+	and.b32  	%r2, %r10, 255;
+	mov.u32 	%r9, 1;
 	// begin inline asm
-	atom.cas.relaxed.sys.b32 %r8,[%rd15],%r2,%r10;
+	atom.cas.relaxed.sys.b32 %r7,[%rd15],%r2,%r9;
 	// end inline asm
-	setp.eq.s32 	%p3, %r8, %r2;
-	cvt.u16.u32 	%rs4, %r8;
+	setp.eq.s32 	%p3, %r7, %r2;
+	cvt.u16.u32 	%rs4, %r7;
 	st.local.u8 	[%rd1], %rs4;
 	@%p3 bra 	$L__BB15_11;
 
-	mov.u64 	%rd31, 0;
+	mov.u64 	%rd29, 0;
 
 $L__BB15_6:
-	add.s64 	%rd6, %rd1, %rd31;
-	add.s64 	%rd7, %rd3, %rd31;
-	setp.eq.s64 	%p4, %rd31, 1;
+	add.s64 	%rd6, %rd1, %rd29;
+	add.s64 	%rd7, %rd3, %rd29;
+	setp.eq.s64 	%p4, %rd29, 1;
 	@%p4 bra 	$L__BB15_10;
 
 	ld.local.u8 	%rs5, [%rd6];
@@ -1274,7 +1260,7 @@ $L__BB15_6:
 	@%p5 bra 	$L__BB15_9;
 
 	setp.le.u16 	%p6, %rs5, %rs6;
-	add.s64 	%rd31, %rd31, 1;
+	add.s64 	%rd29, %rd29, 1;
 	@%p6 bra 	$L__BB15_6;
 
 $L__BB15_9:
@@ -1283,48 +1269,125 @@ $L__BB15_9:
 	bra.uni 	$L__BB15_11;
 
 $L__BB15_10:
-	mov.u32 	%r13, 255;
+	mov.u32 	%r12, 255;
 	// begin inline asm
-	atom.and.relaxed.sys.b32 %r12,[%rd15],%r13;
+	atom.and.relaxed.sys.b32 %r11,[%rd15],%r12;
 	// end inline asm
 
 $L__BB15_11:
 	mov.pred 	%p15, 0;
 	@%p3 bra 	$L__BB15_16;
 
-	mov.u64 	%rd32, 1;
-	mov.u64 	%rd33, %rd2;
-	mov.u64 	%rd34, %rd3;
+	mov.u64 	%rd30, 1;
+	mov.u64 	%rd31, %rd2;
+	mov.u64 	%rd32, %rd3;
 
 $L__BB15_13:
-	setp.eq.s64 	%p9, %rd32, 0;
+	setp.eq.s64 	%p9, %rd30, 0;
 	@%p9 bra 	$L__BB15_4;
 
-	ld.local.u8 	%rs8, [%rd33];
-	ld.local.u8 	%rs9, [%rd34];
+	ld.local.u8 	%rs8, [%rd31];
+	ld.local.u8 	%rs9, [%rd32];
 	setp.lt.u16 	%p11, %rs8, %rs9;
 	mov.pred 	%p15, -1;
 	@%p11 bra 	$L__BB15_16;
 
-	add.s64 	%rd34, %rd34, 1;
-	add.s64 	%rd33, %rd33, 1;
+	add.s64 	%rd32, %rd32, 1;
+	add.s64 	%rd31, %rd31, 1;
 	setp.le.u16 	%p13, %rs8, %rs9;
-	add.s64 	%rd32, %rd32, -1;
+	add.s64 	%rd30, %rd30, -1;
 	@%p13 bra 	$L__BB15_13;
 
 $L__BB15_16:
 	@%p15 bra 	$L__BB15_19;
 
-	add.s32 	%r14, %r14, 1;
-	setp.lt.u32 	%p14, %r14, 10000;
+	add.s32 	%r13, %r13, 1;
+	setp.lt.u32 	%p14, %r13, 10000;
 	@%p14 bra 	$L__BB15_3;
 
 	// begin inline asm
-	mov.u64 	%rd28, %clock64;
+	mov.u64 	%rd26, %clock64;
 	// end inline asm
-	sub.s64 	%rd29, %rd28, %rd23;
-	cvta.to.global.u64 	%rd30, %rd16;
-	st.global.u64 	[%rd30], %rd29;
+	sub.s64 	%rd27, %rd26, %rd21;
+	cvta.to.global.u64 	%rd28, %rd16;
+	st.global.u64 	[%rd28], %rd27;
+	ret;
+
+}
+	// .globl	_Z27device_pong_kernel_volatilePVh
+.visible .entry _Z27device_pong_kernel_volatilePVh(
+	.param .u64 _Z27device_pong_kernel_volatilePVh_param_0
+)
+{
+	.reg .pred 	%p<3>;
+	.reg .b16 	%rs<4>;
+	.reg .b32 	%r<5>;
+	.reg .b64 	%rd<3>;
+
+
+	ld.param.u64 	%rd2, [_Z27device_pong_kernel_volatilePVh_param_0];
+	cvta.to.global.u64 	%rd1, %rd2;
+	mov.u16 	%rs1, 0;
+	st.volatile.global.u8 	[%rd1], %rs1;
+	mov.u32 	%r4, 0;
+
+$L__BB16_1:
+	ld.volatile.global.u8 	%rs2, [%rd1];
+	setp.eq.s16 	%p1, %rs2, 0;
+	@%p1 bra 	$L__BB16_1;
+
+	mov.u16 	%rs3, 0;
+	st.volatile.global.u8 	[%rd1], %rs3;
+	add.s32 	%r4, %r4, 1;
+	setp.lt.u32 	%p2, %r4, 10000;
+	@%p2 bra 	$L__BB16_1;
+
+	ret;
+
+}
+	// .globl	_Z27device_ping_kernel_volatilePVhPl
+.visible .entry _Z27device_ping_kernel_volatilePVhPl(
+	.param .u64 _Z27device_ping_kernel_volatilePVhPl_param_0,
+	.param .u64 _Z27device_ping_kernel_volatilePVhPl_param_1
+)
+{
+	.reg .pred 	%p<4>;
+	.reg .b16 	%rs<4>;
+	.reg .b32 	%r<5>;
+	.reg .b64 	%rd<9>;
+
+
+	ld.param.u64 	%rd4, [_Z27device_ping_kernel_volatilePVhPl_param_0];
+	ld.param.u64 	%rd5, [_Z27device_ping_kernel_volatilePVhPl_param_1];
+	cvta.to.global.u64 	%rd1, %rd5;
+	cvta.to.global.u64 	%rd2, %rd4;
+
+$L__BB17_1:
+	ld.volatile.global.u8 	%rs1, [%rd2];
+	setp.eq.s16 	%p1, %rs1, 1;
+	@%p1 bra 	$L__BB17_1;
+
+	// begin inline asm
+	mov.u64 	%rd6, %clock64;
+	// end inline asm
+	mov.u32 	%r4, 0;
+
+$L__BB17_3:
+	ld.volatile.global.u8 	%rs2, [%rd2];
+	setp.eq.s16 	%p2, %rs2, 1;
+	@%p2 bra 	$L__BB17_3;
+
+	mov.u16 	%rs3, 1;
+	st.volatile.global.u8 	[%rd2], %rs3;
+	add.s32 	%r4, %r4, 1;
+	setp.lt.u32 	%p3, %r4, 10000;
+	@%p3 bra 	$L__BB17_3;
+
+	// begin inline asm
+	mov.u64 	%rd7, %clock64;
+	// end inline asm
+	sub.s64 	%rd8, %rd7, %rd6;
+	st.global.u64 	[%rd1], %rd8;
 	ret;
 
 }
@@ -1401,7 +1464,7 @@ $L__BB15_16:
 	add.s32 	%r9, %r3, %r4;
 	cvt.u64.u32 	%rd1, %r9;
 	setp.eq.s64 	%p1, %rd37, 0;
-	@%p1 bra 	$L__BB18_30;
+	@%p1 bra 	$L__BB20_30;
 
 	cvt.u32.u64 	%r10, %rd1;
 	neg.s32 	%r5, %r3;
@@ -1423,80 +1486,80 @@ $L__BB15_16:
 	cvta.to.global.u64 	%rd7, %rd38;
 	mov.u64 	%rd65, 0;
 
-$L__BB18_2:
+$L__BB20_2:
 	setp.ne.s32 	%p2, %r10, 0;
-	@%p2 bra 	$L__BB18_4;
+	@%p2 bra 	$L__BB20_4;
 
 	mov.u64 	%rd43, 0;
 	st.shared.u64 	[_ZZ27device_read_kernel_detailedPdmmPlE12times_vector], %rd43;
 
-$L__BB18_4:
+$L__BB20_4:
 	setp.eq.s32 	%p3, %r4, %r5;
 	bar.sync 	0;
-	@%p3 bra 	$L__BB18_7;
-	bra.uni 	$L__BB18_5;
+	@%p3 bra 	$L__BB20_7;
+	bra.uni 	$L__BB20_5;
 
-$L__BB18_7:
+$L__BB20_7:
 	// begin inline asm
 	mov.u64 	%rd44, %clock64;
 	// end inline asm
 	add.s64 	%rd66, %rd44, 1979999;
 	st.shared.u64 	[_ZZ27device_read_kernel_detailedPdmmPlE12times_vector], %rd66;
-	bra.uni 	$L__BB18_8;
+	bra.uni 	$L__BB20_8;
 
-$L__BB18_5:
+$L__BB20_5:
 	ld.shared.u64 	%rd66, [_ZZ27device_read_kernel_detailedPdmmPlE12times_vector];
 	setp.ne.s64 	%p4, %rd66, 0;
-	@%p4 bra 	$L__BB18_8;
-	bra.uni 	$L__BB18_6;
+	@%p4 bra 	$L__BB20_8;
+	bra.uni 	$L__BB20_6;
 
-$L__BB18_8:
+$L__BB20_8:
 	// begin inline asm
 	mov.u64 	%rd45, %clock64;
 	// end inline asm
 	setp.lt.u64 	%p5, %rd45, %rd66;
-	@%p5 bra 	$L__BB18_8;
+	@%p5 bra 	$L__BB20_8;
 
 	setp.ge.u64 	%p6, %rd1, %rd36;
-	@%p6 bra 	$L__BB18_19;
+	@%p6 bra 	$L__BB20_19;
 
 	mov.u64 	%rd67, %rd1;
 
-$L__BB18_11:
+$L__BB20_11:
 	.pragma "nounroll";
 	add.s64 	%rd13, %rd67, %rd2;
 	setp.ge.u64 	%p7, %rd13, %rd36;
-	@%p7 bra 	$L__BB18_19;
+	@%p7 bra 	$L__BB20_19;
 
 	add.s64 	%rd14, %rd13, %rd2;
 	setp.ge.u64 	%p8, %rd14, %rd36;
-	@%p8 bra 	$L__BB18_19;
+	@%p8 bra 	$L__BB20_19;
 
 	add.s64 	%rd15, %rd14, %rd2;
 	setp.ge.u64 	%p9, %rd15, %rd36;
-	@%p9 bra 	$L__BB18_19;
+	@%p9 bra 	$L__BB20_19;
 
 	add.s64 	%rd16, %rd15, %rd2;
 	setp.ge.u64 	%p10, %rd16, %rd36;
-	@%p10 bra 	$L__BB18_19;
+	@%p10 bra 	$L__BB20_19;
 
 	add.s64 	%rd17, %rd16, %rd2;
 	setp.ge.u64 	%p11, %rd17, %rd36;
-	@%p11 bra 	$L__BB18_19;
+	@%p11 bra 	$L__BB20_19;
 
 	add.s64 	%rd18, %rd17, %rd2;
 	setp.ge.u64 	%p12, %rd18, %rd36;
-	@%p12 bra 	$L__BB18_19;
+	@%p12 bra 	$L__BB20_19;
 
 	add.s64 	%rd19, %rd18, %rd2;
 	setp.ge.u64 	%p13, %rd19, %rd36;
-	@%p13 bra 	$L__BB18_19;
+	@%p13 bra 	$L__BB20_19;
 
 	add.s64 	%rd67, %rd19, %rd2;
 	setp.lt.u64 	%p14, %rd67, %rd36;
-	@%p14 bra 	$L__BB18_11;
+	@%p14 bra 	$L__BB20_11;
 
-$L__BB18_19:
+$L__BB20_19:
 	setp.ne.s32 	%p15, %r4, 0;
 	// begin inline asm
 	mov.u64 	%rd46, %clock64;
@@ -1504,20 +1567,20 @@ $L__BB18_19:
 	sub.s64 	%rd47, %rd46, %rd66;
 	st.shared.u64 	[%r6], %rd47;
 	bar.sync 	0;
-	@%p15 bra 	$L__BB18_29;
+	@%p15 bra 	$L__BB20_29;
 
 	setp.lt.u32 	%p16, %r2, 2;
 	ld.shared.u64 	%rd74, [_ZZ27device_read_kernel_detailedPdmmPlE12times_vector];
-	@%p16 bra 	$L__BB18_28;
+	@%p16 bra 	$L__BB20_28;
 
 	setp.lt.u64 	%p17, %rd5, 3;
 	mov.u64 	%rd72, 1;
-	@%p17 bra 	$L__BB18_24;
+	@%p17 bra 	$L__BB20_24;
 
 	mov.u64 	%rd72, 1;
 	mov.u64 	%rd70, %rd6;
 
-$L__BB18_23:
+$L__BB20_23:
 	cvt.u32.u64 	%r17, %rd72;
 	shl.b32 	%r18, %r17, 3;
 	add.s32 	%r20, %r14, %r18;
@@ -1532,11 +1595,11 @@ $L__BB18_23:
 	add.s64 	%rd72, %rd72, 4;
 	add.s64 	%rd70, %rd70, -4;
 	setp.ne.s64 	%p18, %rd70, 0;
-	@%p18 bra 	$L__BB18_23;
+	@%p18 bra 	$L__BB20_23;
 
-$L__BB18_24:
+$L__BB20_24:
 	setp.eq.s32 	%p19, %r7, 0;
-	@%p19 bra 	$L__BB18_28;
+	@%p19 bra 	$L__BB20_28;
 
 	setp.eq.s32 	%p20, %r7, 1;
 	cvt.u32.u64 	%r21, %rd72;
@@ -1544,33 +1607,33 @@ $L__BB18_24:
 	add.s32 	%r8, %r14, %r22;
 	ld.shared.u64 	%rd58, [%r8];
 	max.s64 	%rd74, %rd74, %rd58;
-	@%p20 bra 	$L__BB18_28;
+	@%p20 bra 	$L__BB20_28;
 
 	setp.eq.s32 	%p21, %r7, 2;
 	ld.shared.u64 	%rd59, [%r8+8];
 	max.s64 	%rd74, %rd74, %rd59;
-	@%p21 bra 	$L__BB18_28;
+	@%p21 bra 	$L__BB20_28;
 
 	ld.shared.u64 	%rd60, [%r8+16];
 	max.s64 	%rd74, %rd74, %rd60;
 
-$L__BB18_28:
+$L__BB20_28:
 	mul.lo.s64 	%rd61, %rd65, %rd3;
 	add.s64 	%rd62, %rd61, %rd4;
 	shl.b64 	%rd63, %rd62, 3;
 	add.s64 	%rd64, %rd7, %rd63;
 	st.global.u64 	[%rd64], %rd74;
 
-$L__BB18_29:
+$L__BB20_29:
 	add.s64 	%rd65, %rd65, 1;
 	setp.lt.u64 	%p22, %rd65, %rd37;
-	@%p22 bra 	$L__BB18_2;
+	@%p22 bra 	$L__BB20_2;
 
-$L__BB18_30:
+$L__BB20_30:
 	ret;
 
-$L__BB18_6:
-	bra.uni 	$L__BB18_6;
+$L__BB20_6:
+	bra.uni 	$L__BB20_6;
 
 }
 	// .globl	_Z18device_read_kernelPdm
@@ -1591,47 +1654,47 @@ $L__BB18_6:
 	mad.lo.s32 	%r4, %r1, %r3, %r2;
 	cvt.u64.u32 	%rd13, %r4;
 	setp.ge.u64 	%p1, %rd13, %rd12;
-	@%p1 bra 	$L__BB19_10;
+	@%p1 bra 	$L__BB21_10;
 
 	mov.u32 	%r5, %nctaid.x;
 	mul.lo.s32 	%r6, %r1, %r5;
 	cvt.u64.u32 	%rd2, %r6;
 
-$L__BB19_2:
+$L__BB21_2:
 	.pragma "nounroll";
 	add.s64 	%rd4, %rd13, %rd2;
 	setp.ge.u64 	%p2, %rd4, %rd12;
-	@%p2 bra 	$L__BB19_10;
+	@%p2 bra 	$L__BB21_10;
 
 	add.s64 	%rd5, %rd4, %rd2;
 	setp.ge.u64 	%p3, %rd5, %rd12;
-	@%p3 bra 	$L__BB19_10;
+	@%p3 bra 	$L__BB21_10;
 
 	add.s64 	%rd6, %rd5, %rd2;
 	setp.ge.u64 	%p4, %rd6, %rd12;
-	@%p4 bra 	$L__BB19_10;
+	@%p4 bra 	$L__BB21_10;
 
 	add.s64 	%rd7, %rd6, %rd2;
 	setp.ge.u64 	%p5, %rd7, %rd12;
-	@%p5 bra 	$L__BB19_10;
+	@%p5 bra 	$L__BB21_10;
 
 	add.s64 	%rd8, %rd7, %rd2;
 	setp.ge.u64 	%p6, %rd8, %rd12;
-	@%p6 bra 	$L__BB19_10;
+	@%p6 bra 	$L__BB21_10;
 
 	add.s64 	%rd9, %rd8, %rd2;
 	setp.ge.u64 	%p7, %rd9, %rd12;
-	@%p7 bra 	$L__BB19_10;
+	@%p7 bra 	$L__BB21_10;
 
 	add.s64 	%rd10, %rd9, %rd2;
 	setp.ge.u64 	%p8, %rd10, %rd12;
-	@%p8 bra 	$L__BB19_10;
+	@%p8 bra 	$L__BB21_10;
 
 	add.s64 	%rd13, %rd10, %rd2;
 	setp.lt.u64 	%p9, %rd13, %rd12;
-	@%p9 bra 	$L__BB19_2;
+	@%p9 bra 	$L__BB21_2;
 
-$L__BB19_10:
+$L__BB21_10:
 	ret;
 
 }
@@ -1654,23 +1717,23 @@ $L__BB19_10:
 	mad.lo.s32 	%r4, %r2, %r1, %r3;
 	cvt.u64.u32 	%rd11, %r4;
 	setp.ge.u64 	%p1, %rd11, %rd7;
-	@%p1 bra 	$L__BB20_3;
+	@%p1 bra 	$L__BB22_3;
 
 	mov.u32 	%r5, %nctaid.x;
 	mul.lo.s32 	%r6, %r1, %r5;
 	cvt.u64.u32 	%rd2, %r6;
 	cvta.to.global.u64 	%rd3, %rd6;
 
-$L__BB20_2:
+$L__BB22_2:
 	shl.b64 	%rd8, %rd11, 3;
 	add.s64 	%rd9, %rd3, %rd8;
 	mov.u64 	%rd10, 0;
 	st.global.u64 	[%rd9], %rd10;
 	add.s64 	%rd11, %rd11, %rd2;
 	setp.lt.u64 	%p2, %rd11, %rd7;
-	@%p2 bra 	$L__BB20_2;
+	@%p2 bra 	$L__BB22_2;
 
-$L__BB20_3:
+$L__BB22_3:
 	ret;
 
 }
@@ -1696,7 +1759,7 @@ $L__BB20_3:
 	mad.lo.s32 	%r4, %r2, %r1, %r3;
 	cvt.u64.u32 	%rd13, %r4;
 	setp.ge.u64 	%p1, %rd13, %rd9;
-	@%p1 bra 	$L__BB21_3;
+	@%p1 bra 	$L__BB23_3;
 
 	mov.u32 	%r5, %nctaid.x;
 	mul.lo.s32 	%r6, %r1, %r5;
@@ -1704,7 +1767,7 @@ $L__BB20_3:
 	cvta.to.global.u64 	%rd3, %rd7;
 	cvta.to.global.u64 	%rd4, %rd8;
 
-$L__BB21_2:
+$L__BB23_2:
 	shl.b64 	%rd10, %rd13, 3;
 	add.s64 	%rd11, %rd3, %rd10;
 	ld.global.f64 	%fd1, [%rd11];
@@ -1712,38 +1775,38 @@ $L__BB21_2:
 	st.global.f64 	[%rd12], %fd1;
 	add.s64 	%rd13, %rd13, %rd2;
 	setp.lt.u64 	%p2, %rd13, %rd9;
-	@%p2 bra 	$L__BB21_2;
+	@%p2 bra 	$L__BB23_2;
 
-$L__BB21_3:
+$L__BB23_3:
 	ret;
 
 }
-	// .globl	_Z23device_read_kernel_syncPdmmPlS0_
-.visible .entry _Z23device_read_kernel_syncPdmmPlS0_(
-	.param .u64 _Z23device_read_kernel_syncPdmmPlS0__param_0,
-	.param .u64 _Z23device_read_kernel_syncPdmmPlS0__param_1,
-	.param .u64 _Z23device_read_kernel_syncPdmmPlS0__param_2,
-	.param .u64 _Z23device_read_kernel_syncPdmmPlS0__param_3,
-	.param .u64 _Z23device_read_kernel_syncPdmmPlS0__param_4
+	// .globl	_Z23device_read_kernel_syncP10ulonglong4mmPlS1_
+.visible .entry _Z23device_read_kernel_syncP10ulonglong4mmPlS1_(
+	.param .u64 _Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_0,
+	.param .u64 _Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_1,
+	.param .u64 _Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_2,
+	.param .u64 _Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_3,
+	.param .u64 _Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_4
 )
 {
-	.local .align 8 .b8 	__local_depot22[8];
+	.local .align 8 .b8 	__local_depot24[8];
 	.reg .b64 	%SP;
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<24>;
 	.reg .b32 	%r<53>;
-	.reg .b64 	%rd<97>;
+	.reg .b64 	%rd<109>;
 	// demoted variable
-	.shared .align 8 .b8 _ZZ23device_read_kernel_syncPdmmPlS0_E6clocks[8192];
+	.shared .align 8 .b8 _ZZ23device_read_kernel_syncP10ulonglong4mmPlS1_E6clocks[8192];
 
-	mov.u64 	%SPL, __local_depot22;
+	mov.u64 	%SPL, __local_depot24;
 	cvta.local.u64 	%SP, %SPL;
-	ld.param.u64 	%rd35, [_Z23device_read_kernel_syncPdmmPlS0__param_0];
-	ld.param.u64 	%rd36, [_Z23device_read_kernel_syncPdmmPlS0__param_1];
-	ld.param.u64 	%rd37, [_Z23device_read_kernel_syncPdmmPlS0__param_2];
-	ld.param.u64 	%rd38, [_Z23device_read_kernel_syncPdmmPlS0__param_3];
-	ld.param.u64 	%rd40, [_Z23device_read_kernel_syncPdmmPlS0__param_4];
-	cvta.to.global.u64 	%rd1, %rd40;
+	ld.param.u64 	%rd37, [_Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_0];
+	ld.param.u64 	%rd38, [_Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_1];
+	ld.param.u64 	%rd39, [_Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_2];
+	ld.param.u64 	%rd40, [_Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_3];
+	ld.param.u64 	%rd42, [_Z23device_read_kernel_syncP10ulonglong4mmPlS1__param_4];
+	cvta.to.global.u64 	%rd1, %rd42;
 	mov.u32 	%r1, %ctaid.x;
 	mov.u32 	%r2, %ntid.x;
 	mov.u32 	%r3, %tid.x;
@@ -1752,14 +1815,14 @@ $L__BB21_3:
 	// begin inline asm
 	mov.u32 %r13, %envreg2;
 	// end inline asm
-	cvt.u64.u32 	%rd41, %r13;
+	cvt.u64.u32 	%rd43, %r13;
 	// begin inline asm
 	mov.u32 %r14, %envreg1;
 	// end inline asm
-	cvt.u64.u32 	%rd42, %r14;
-	bfi.b64 	%rd3, %rd42, %rd41, 32, 32;
-	setp.eq.s64 	%p1, %rd37, 0;
-	@%p1 bra 	$L__BB22_33;
+	cvt.u64.u32 	%rd44, %r14;
+	bfi.b64 	%rd3, %rd44, %rd43, 32, 32;
+	setp.eq.s64 	%p1, %rd39, 0;
+	@%p1 bra 	$L__BB24_33;
 
 	add.s64 	%rd4, %rd3, 4;
 	mov.u32 	%r16, %tid.y;
@@ -1779,214 +1842,218 @@ $L__BB21_3:
 	mov.u32 	%r27, -2147483647;
 	sub.s32 	%r28, %r27, %r22;
 	selp.b32 	%r6, %r28, 1, %p2;
+	shr.u64 	%rd5, %rd38, 2;
 	shl.b32 	%r29, %r3, 3;
-	mov.u32 	%r30, _ZZ23device_read_kernel_syncPdmmPlS0_E6clocks;
+	mov.u32 	%r30, _ZZ23device_read_kernel_syncP10ulonglong4mmPlS1_E6clocks;
 	add.s32 	%r7, %r30, %r29;
 	mul.lo.s32 	%r31, %r2, %r19;
-	cvt.u64.u32 	%rd5, %r31;
-	cvt.u64.u32 	%rd6, %r19;
-	cvt.u64.u32 	%rd7, %r1;
-	cvt.u64.u32 	%rd45, %r2;
-	add.s64 	%rd8, %rd45, -2;
+	cvt.u64.u32 	%rd6, %r31;
+	cvt.u64.u32 	%rd7, %r19;
+	cvt.u64.u32 	%rd8, %r1;
+	cvt.u64.u32 	%rd47, %r2;
+	add.s64 	%rd9, %rd47, -2;
 	add.s32 	%r32, %r2, -1;
 	and.b32  	%r8, %r32, 3;
-	cvt.u64.u32 	%rd46, %r8;
-	not.b64 	%rd47, %rd46;
-	add.s64 	%rd9, %rd47, %rd45;
-	cvta.to.global.u64 	%rd10, %rd38;
-	mov.u64 	%rd84, 0;
+	cvt.u64.u32 	%rd48, %r8;
+	not.b64 	%rd49, %rd48;
+	add.s64 	%rd10, %rd49, %rd47;
+	cvta.to.global.u64 	%rd11, %rd40;
+	cvta.to.global.u64 	%rd12, %rd37;
+	mov.u64 	%rd96, 0;
 
-$L__BB22_2:
+$L__BB24_2:
 	setp.ne.s64 	%p3, %rd3, 0;
-	@%p3 bra 	$L__BB22_4;
+	@%p3 bra 	$L__BB24_4;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB22_4:
+$L__BB24_4:
 	setp.ne.s32 	%p4, %r4, %r5;
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB22_7;
+	@%p4 bra 	$L__BB24_7;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r33,[%rd4],%r6;
 	// end inline asm
 
-$L__BB22_6:
+$L__BB24_6:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r35,[%rd4];
 	// end inline asm
 	xor.b32  	%r36, %r35, %r33;
 	setp.gt.s32 	%p5, %r36, -1;
-	@%p5 bra 	$L__BB22_6;
+	@%p5 bra 	$L__BB24_6;
 
-$L__BB22_7:
+$L__BB24_7:
 	barrier.sync 	0;
 	// begin inline asm
-	mov.u64 %rd50, %globaltimer;
+	mov.u64 %rd52, %globaltimer;
 	// end inline asm
-	add.s64 	%rd51, %rd50, 1000000;
-	st.global.u64 	[%rd1], %rd51;
-	@%p3 bra 	$L__BB22_9;
+	add.s64 	%rd53, %rd52, 1000000;
+	st.global.u64 	[%rd1], %rd53;
+	@%p3 bra 	$L__BB24_9;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB22_9:
+$L__BB24_9:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB22_12;
+	@%p4 bra 	$L__BB24_12;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r37,[%rd4],%r6;
 	// end inline asm
 
-$L__BB22_11:
+$L__BB24_11:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r39,[%rd4];
 	// end inline asm
 	xor.b32  	%r40, %r39, %r37;
 	setp.gt.s32 	%p8, %r40, -1;
-	@%p8 bra 	$L__BB22_11;
+	@%p8 bra 	$L__BB24_11;
 
-$L__BB22_12:
+$L__BB24_12:
 	barrier.sync 	0;
 	bar.sync 	0;
-	ld.global.u64 	%rd13, [%rd1];
+	ld.global.u64 	%rd15, [%rd1];
 
-$L__BB22_13:
+$L__BB24_13:
 	// begin inline asm
-	mov.u64 %rd54, %globaltimer;
+	mov.u64 %rd56, %globaltimer;
 	// end inline asm
-	setp.lt.s64 	%p9, %rd54, %rd13;
-	@%p9 bra 	$L__BB22_13;
+	setp.lt.s64 	%p9, %rd56, %rd15;
+	@%p9 bra 	$L__BB24_13;
 
-	setp.ge.u64 	%p10, %rd2, %rd36;
-	@%p10 bra 	$L__BB22_17;
+	setp.le.u64 	%p10, %rd5, %rd2;
+	@%p10 bra 	$L__BB24_17;
 
-	mov.u64 	%rd86, %rd2;
+	mov.u64 	%rd98, %rd2;
 
-$L__BB22_16:
-	shl.b64 	%rd57, %rd86, 3;
-	add.s64 	%rd56, %rd35, %rd57;
+$L__BB24_16:
+	shl.b64 	%rd57, %rd98, 5;
+	add.s64 	%rd58, %rd12, %rd57;
+	ld.global.v2.u64 	{%rd59, %rd60}, [%rd58];
+	ld.global.v2.u64 	{%rd63, %rd64}, [%rd58+16];
+	xor.b64  	%rd67, %rd60, %rd100;
+	xor.b64  	%rd68, %rd67, %rd59;
+	xor.b64  	%rd69, %rd68, %rd63;
+	xor.b64  	%rd100, %rd69, %rd64;
+	add.s64 	%rd98, %rd98, %rd6;
+	setp.lt.u64 	%p11, %rd98, %rd5;
+	@%p11 bra 	$L__BB24_16;
+
+$L__BB24_17:
 	// begin inline asm
-	ld.ca.u64 %rd55, [%rd56];
+	mov.u64 %rd70, %globaltimer;
 	// end inline asm
-	xor.b64  	%rd88, %rd55, %rd88;
-	add.s64 	%rd86, %rd86, %rd5;
-	setp.lt.u64 	%p11, %rd86, %rd36;
-	@%p11 bra 	$L__BB22_16;
-
-$L__BB22_17:
-	// begin inline asm
-	mov.u64 %rd58, %globaltimer;
-	// end inline asm
-	sub.s64 	%rd59, %rd58, %rd13;
-	st.shared.u64 	[%r7], %rd59;
-	@%p3 bra 	$L__BB22_19;
+	sub.s64 	%rd71, %rd70, %rd15;
+	st.shared.u64 	[%r7], %rd71;
+	@%p3 bra 	$L__BB24_19;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB22_19:
+$L__BB24_19:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB22_22;
+	@%p4 bra 	$L__BB24_22;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r41,[%rd4],%r6;
 	// end inline asm
 
-$L__BB22_21:
+$L__BB24_21:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r43,[%rd4];
 	// end inline asm
 	xor.b32  	%r44, %r43, %r41;
 	setp.gt.s32 	%p14, %r44, -1;
-	@%p14 bra 	$L__BB22_21;
+	@%p14 bra 	$L__BB24_21;
 
-$L__BB22_22:
+$L__BB24_22:
 	setp.ne.s32 	%p15, %r3, 0;
 	barrier.sync 	0;
-	@%p15 bra 	$L__BB22_32;
+	@%p15 bra 	$L__BB24_32;
 
 	setp.lt.u32 	%p16, %r2, 2;
-	ld.shared.u64 	%rd95, [_ZZ23device_read_kernel_syncPdmmPlS0_E6clocks];
-	@%p16 bra 	$L__BB22_31;
+	ld.shared.u64 	%rd107, [_ZZ23device_read_kernel_syncP10ulonglong4mmPlS1_E6clocks];
+	@%p16 bra 	$L__BB24_31;
 
-	setp.lt.u64 	%p17, %rd8, 3;
-	mov.u64 	%rd93, 1;
-	@%p17 bra 	$L__BB22_27;
+	setp.lt.u64 	%p17, %rd9, 3;
+	mov.u64 	%rd105, 1;
+	@%p17 bra 	$L__BB24_27;
 
-	mov.u64 	%rd93, 1;
-	mov.u64 	%rd91, %rd9;
+	mov.u64 	%rd105, 1;
+	mov.u64 	%rd103, %rd10;
 
-$L__BB22_26:
-	cvt.u32.u64 	%r45, %rd93;
+$L__BB24_26:
+	cvt.u32.u64 	%r45, %rd105;
 	shl.b32 	%r46, %r45, 3;
 	add.s32 	%r48, %r30, %r46;
-	ld.shared.u64 	%rd65, [%r48];
-	max.s64 	%rd66, %rd95, %rd65;
-	ld.shared.u64 	%rd67, [%r48+8];
-	max.s64 	%rd68, %rd66, %rd67;
-	ld.shared.u64 	%rd69, [%r48+16];
-	max.s64 	%rd70, %rd68, %rd69;
-	ld.shared.u64 	%rd71, [%r48+24];
-	max.s64 	%rd95, %rd70, %rd71;
-	add.s64 	%rd93, %rd93, 4;
-	add.s64 	%rd91, %rd91, -4;
-	setp.ne.s64 	%p18, %rd91, 0;
-	@%p18 bra 	$L__BB22_26;
+	ld.shared.u64 	%rd77, [%r48];
+	max.s64 	%rd78, %rd107, %rd77;
+	ld.shared.u64 	%rd79, [%r48+8];
+	max.s64 	%rd80, %rd78, %rd79;
+	ld.shared.u64 	%rd81, [%r48+16];
+	max.s64 	%rd82, %rd80, %rd81;
+	ld.shared.u64 	%rd83, [%r48+24];
+	max.s64 	%rd107, %rd82, %rd83;
+	add.s64 	%rd105, %rd105, 4;
+	add.s64 	%rd103, %rd103, -4;
+	setp.ne.s64 	%p18, %rd103, 0;
+	@%p18 bra 	$L__BB24_26;
 
-$L__BB22_27:
+$L__BB24_27:
 	setp.eq.s32 	%p19, %r8, 0;
-	@%p19 bra 	$L__BB22_31;
+	@%p19 bra 	$L__BB24_31;
 
 	setp.eq.s32 	%p20, %r8, 1;
-	cvt.u32.u64 	%r49, %rd93;
+	cvt.u32.u64 	%r49, %rd105;
 	shl.b32 	%r50, %r49, 3;
 	add.s32 	%r12, %r30, %r50;
-	ld.shared.u64 	%rd72, [%r12];
-	max.s64 	%rd95, %rd95, %rd72;
-	@%p20 bra 	$L__BB22_31;
+	ld.shared.u64 	%rd84, [%r12];
+	max.s64 	%rd107, %rd107, %rd84;
+	@%p20 bra 	$L__BB24_31;
 
 	setp.eq.s32 	%p21, %r8, 2;
-	ld.shared.u64 	%rd73, [%r12+8];
-	max.s64 	%rd95, %rd95, %rd73;
-	@%p21 bra 	$L__BB22_31;
+	ld.shared.u64 	%rd85, [%r12+8];
+	max.s64 	%rd107, %rd107, %rd85;
+	@%p21 bra 	$L__BB24_31;
 
-	ld.shared.u64 	%rd74, [%r12+16];
-	max.s64 	%rd95, %rd95, %rd74;
+	ld.shared.u64 	%rd86, [%r12+16];
+	max.s64 	%rd107, %rd107, %rd86;
 
-$L__BB22_31:
-	mul.lo.s64 	%rd75, %rd84, %rd6;
-	add.s64 	%rd76, %rd75, %rd7;
-	shl.b64 	%rd77, %rd76, 3;
-	add.s64 	%rd78, %rd10, %rd77;
-	st.global.u64 	[%rd78], %rd95;
+$L__BB24_31:
+	mul.lo.s64 	%rd87, %rd96, %rd7;
+	add.s64 	%rd88, %rd87, %rd8;
+	shl.b64 	%rd89, %rd88, 3;
+	add.s64 	%rd90, %rd11, %rd89;
+	st.global.u64 	[%rd90], %rd107;
 
-$L__BB22_32:
-	add.s64 	%rd84, %rd84, 1;
-	setp.lt.u64 	%p22, %rd84, %rd37;
-	@%p22 bra 	$L__BB22_2;
+$L__BB24_32:
+	add.s64 	%rd96, %rd96, 1;
+	setp.lt.u64 	%p22, %rd96, %rd39;
+	@%p22 bra 	$L__BB24_2;
 
-$L__BB22_33:
-	ld.global.u64 	%rd79, [%rd1];
-	setp.ne.s64 	%p23, %rd79, 0;
-	@%p23 bra 	$L__BB22_35;
+$L__BB24_33:
+	ld.global.u64 	%rd91, [%rd1];
+	setp.ne.s64 	%p23, %rd91, 0;
+	@%p23 bra 	$L__BB24_35;
 
-	add.u64 	%rd80, %SP, 0;
-	add.u64 	%rd81, %SPL, 0;
-	st.local.u64 	[%rd81], %rd88;
-	mov.u64 	%rd82, $str$2;
-	cvta.global.u64 	%rd83, %rd82;
+	add.u64 	%rd92, %SP, 0;
+	add.u64 	%rd93, %SPL, 0;
+	st.local.u64 	[%rd93], %rd100;
+	mov.u64 	%rd94, $str$2;
+	cvta.global.u64 	%rd95, %rd94;
 	{ // callseq 1, 0
 	.reg .b32 temp_param_reg;
 	.param .b64 param0;
-	st.param.b64 	[param0+0], %rd83;
+	st.param.b64 	[param0+0], %rd95;
 	.param .b64 param1;
-	st.param.b64 	[param1+0], %rd80;
+	st.param.b64 	[param1+0], %rd92;
 	.param .b32 retval0;
 	call.uni (retval0), 
 	vprintf, 
@@ -1997,31 +2064,31 @@ $L__BB22_33:
 	ld.param.b32 	%r52, [retval0+0];
 	} // callseq 1
 
-$L__BB22_35:
+$L__BB24_35:
 	ret;
 
 }
-	// .globl	_Z24device_write_kernel_syncPdmmPlS0_
-.visible .entry _Z24device_write_kernel_syncPdmmPlS0_(
-	.param .u64 _Z24device_write_kernel_syncPdmmPlS0__param_0,
-	.param .u64 _Z24device_write_kernel_syncPdmmPlS0__param_1,
-	.param .u64 _Z24device_write_kernel_syncPdmmPlS0__param_2,
-	.param .u64 _Z24device_write_kernel_syncPdmmPlS0__param_3,
-	.param .u64 _Z24device_write_kernel_syncPdmmPlS0__param_4
+	// .globl	_Z24device_write_kernel_syncP10ulonglong2mmPlS1_
+.visible .entry _Z24device_write_kernel_syncP10ulonglong2mmPlS1_(
+	.param .u64 _Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_0,
+	.param .u64 _Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_1,
+	.param .u64 _Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_2,
+	.param .u64 _Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_3,
+	.param .u64 _Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_4
 )
 {
 	.reg .pred 	%p<23>;
 	.reg .b32 	%r<52>;
-	.reg .b64 	%rd<82>;
+	.reg .b64 	%rd<83>;
 	// demoted variable
-	.shared .align 8 .b8 _ZZ24device_write_kernel_syncPdmmPlS0_E6clocks[8192];
+	.shared .align 8 .b8 _ZZ24device_write_kernel_syncP10ulonglong2mmPlS1_E6clocks[8192];
 
-	ld.param.u64 	%rd31, [_Z24device_write_kernel_syncPdmmPlS0__param_0];
-	ld.param.u64 	%rd32, [_Z24device_write_kernel_syncPdmmPlS0__param_1];
-	ld.param.u64 	%rd33, [_Z24device_write_kernel_syncPdmmPlS0__param_2];
-	ld.param.u64 	%rd34, [_Z24device_write_kernel_syncPdmmPlS0__param_3];
-	ld.param.u64 	%rd35, [_Z24device_write_kernel_syncPdmmPlS0__param_4];
-	cvta.to.global.u64 	%rd1, %rd35;
+	ld.param.u64 	%rd32, [_Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_0];
+	ld.param.u64 	%rd33, [_Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_1];
+	ld.param.u64 	%rd34, [_Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_2];
+	ld.param.u64 	%rd35, [_Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_3];
+	ld.param.u64 	%rd36, [_Z24device_write_kernel_syncP10ulonglong2mmPlS1__param_4];
+	cvta.to.global.u64 	%rd1, %rd36;
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r2, %ctaid.x;
 	mov.u32 	%r3, %tid.x;
@@ -2030,14 +2097,14 @@ $L__BB22_35:
 	// begin inline asm
 	mov.u32 %r13, %envreg2;
 	// end inline asm
-	cvt.u64.u32 	%rd36, %r13;
+	cvt.u64.u32 	%rd37, %r13;
 	// begin inline asm
 	mov.u32 %r14, %envreg1;
 	// end inline asm
-	cvt.u64.u32 	%rd37, %r14;
-	bfi.b64 	%rd3, %rd37, %rd36, 32, 32;
-	setp.eq.s64 	%p1, %rd33, 0;
-	@%p1 bra 	$L__BB23_33;
+	cvt.u64.u32 	%rd38, %r14;
+	bfi.b64 	%rd3, %rd38, %rd37, 32, 32;
+	setp.eq.s64 	%p1, %rd34, 0;
+	@%p1 bra 	$L__BB25_33;
 
 	add.s64 	%rd4, %rd3, 4;
 	mov.u32 	%r16, %tid.y;
@@ -2057,198 +2124,199 @@ $L__BB22_35:
 	mov.u32 	%r27, -2147483647;
 	sub.s32 	%r28, %r27, %r22;
 	selp.b32 	%r6, %r28, 1, %p2;
+	shr.u64 	%rd5, %rd33, 1;
 	shl.b32 	%r29, %r3, 3;
-	mov.u32 	%r30, _ZZ24device_write_kernel_syncPdmmPlS0_E6clocks;
+	mov.u32 	%r30, _ZZ24device_write_kernel_syncP10ulonglong2mmPlS1_E6clocks;
 	add.s32 	%r7, %r30, %r29;
 	mul.lo.s32 	%r31, %r1, %r19;
-	cvt.u64.u32 	%rd5, %r31;
-	cvt.u64.u32 	%rd6, %r19;
-	cvt.u64.u32 	%rd7, %r2;
-	cvt.u64.u32 	%rd39, %r1;
-	add.s64 	%rd8, %rd39, -2;
+	cvt.u64.u32 	%rd6, %r31;
+	cvt.u64.u32 	%rd7, %r19;
+	cvt.u64.u32 	%rd8, %r2;
+	cvt.u64.u32 	%rd40, %r1;
+	add.s64 	%rd9, %rd40, -2;
 	add.s32 	%r32, %r1, -1;
 	and.b32  	%r8, %r32, 3;
-	cvt.u64.u32 	%rd40, %r8;
-	not.b64 	%rd41, %rd40;
-	add.s64 	%rd9, %rd41, %rd39;
-	cvta.to.global.u64 	%rd10, %rd34;
-	cvta.to.global.u64 	%rd11, %rd31;
-	mov.u64 	%rd73, 0;
+	cvt.u64.u32 	%rd41, %r8;
+	not.b64 	%rd42, %rd41;
+	add.s64 	%rd10, %rd42, %rd40;
+	cvta.to.global.u64 	%rd11, %rd35;
+	cvta.to.global.u64 	%rd12, %rd32;
+	mov.u64 	%rd74, 0;
 
-$L__BB23_2:
+$L__BB25_2:
 	setp.ne.s64 	%p3, %rd3, 0;
-	@%p3 bra 	$L__BB23_4;
+	@%p3 bra 	$L__BB25_4;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB23_4:
+$L__BB25_4:
 	setp.ne.s32 	%p4, %r4, %r5;
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB23_7;
+	@%p4 bra 	$L__BB25_7;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r33,[%rd4],%r6;
 	// end inline asm
 
-$L__BB23_6:
+$L__BB25_6:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r35,[%rd4];
 	// end inline asm
 	xor.b32  	%r36, %r35, %r33;
 	setp.gt.s32 	%p5, %r36, -1;
-	@%p5 bra 	$L__BB23_6;
+	@%p5 bra 	$L__BB25_6;
 
-$L__BB23_7:
+$L__BB25_7:
 	barrier.sync 	0;
 	// begin inline asm
-	mov.u64 %rd44, %globaltimer;
+	mov.u64 %rd45, %globaltimer;
 	// end inline asm
-	add.s64 	%rd45, %rd44, 1000000;
-	st.global.u64 	[%rd1], %rd45;
-	@%p3 bra 	$L__BB23_9;
+	add.s64 	%rd46, %rd45, 1000000;
+	st.global.u64 	[%rd1], %rd46;
+	@%p3 bra 	$L__BB25_9;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB23_9:
+$L__BB25_9:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB23_12;
+	@%p4 bra 	$L__BB25_12;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r37,[%rd4],%r6;
 	// end inline asm
 
-$L__BB23_11:
+$L__BB25_11:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r39,[%rd4];
 	// end inline asm
 	xor.b32  	%r40, %r39, %r37;
 	setp.gt.s32 	%p8, %r40, -1;
-	@%p8 bra 	$L__BB23_11;
+	@%p8 bra 	$L__BB25_11;
 
-$L__BB23_12:
+$L__BB25_12:
 	barrier.sync 	0;
 	bar.sync 	0;
-	ld.global.u64 	%rd13, [%rd1];
+	ld.global.u64 	%rd14, [%rd1];
 
-$L__BB23_13:
+$L__BB25_13:
 	// begin inline asm
-	mov.u64 %rd48, %globaltimer;
+	mov.u64 %rd49, %globaltimer;
 	// end inline asm
-	setp.lt.s64 	%p9, %rd48, %rd13;
-	@%p9 bra 	$L__BB23_13;
+	setp.lt.s64 	%p9, %rd49, %rd14;
+	@%p9 bra 	$L__BB25_13;
 
-	setp.ge.u64 	%p10, %rd2, %rd32;
-	@%p10 bra 	$L__BB23_17;
+	setp.le.u64 	%p10, %rd5, %rd2;
+	@%p10 bra 	$L__BB25_17;
 
-	mov.u64 	%rd74, %rd2;
+	mov.u64 	%rd75, %rd2;
 
-$L__BB23_16:
-	shl.b64 	%rd49, %rd74, 3;
-	add.s64 	%rd50, %rd11, %rd49;
-	mov.u64 	%rd51, 0;
-	st.global.u64 	[%rd50], %rd51;
-	add.s64 	%rd74, %rd74, %rd5;
-	setp.lt.u64 	%p11, %rd74, %rd32;
-	@%p11 bra 	$L__BB23_16;
+$L__BB25_16:
+	shl.b64 	%rd50, %rd75, 4;
+	add.s64 	%rd51, %rd12, %rd50;
+	mov.u64 	%rd52, 0;
+	st.global.v2.u64 	[%rd51], {%rd52, %rd52};
+	add.s64 	%rd75, %rd75, %rd6;
+	setp.lt.u64 	%p11, %rd75, %rd5;
+	@%p11 bra 	$L__BB25_16;
 
-$L__BB23_17:
+$L__BB25_17:
 	// begin inline asm
-	mov.u64 %rd52, %globaltimer;
+	mov.u64 %rd53, %globaltimer;
 	// end inline asm
-	sub.s64 	%rd53, %rd52, %rd13;
-	st.shared.u64 	[%r7], %rd53;
-	@%p3 bra 	$L__BB23_19;
+	sub.s64 	%rd54, %rd53, %rd14;
+	st.shared.u64 	[%r7], %rd54;
+	@%p3 bra 	$L__BB25_19;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB23_19:
+$L__BB25_19:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB23_22;
+	@%p4 bra 	$L__BB25_22;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r41,[%rd4],%r6;
 	// end inline asm
 
-$L__BB23_21:
+$L__BB25_21:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r43,[%rd4];
 	// end inline asm
 	xor.b32  	%r44, %r43, %r41;
 	setp.gt.s32 	%p14, %r44, -1;
-	@%p14 bra 	$L__BB23_21;
+	@%p14 bra 	$L__BB25_21;
 
-$L__BB23_22:
+$L__BB25_22:
 	setp.ne.s32 	%p15, %r3, 0;
 	barrier.sync 	0;
-	@%p15 bra 	$L__BB23_32;
+	@%p15 bra 	$L__BB25_32;
 
 	setp.lt.u32 	%p16, %r1, 2;
-	ld.shared.u64 	%rd81, [_ZZ24device_write_kernel_syncPdmmPlS0_E6clocks];
-	@%p16 bra 	$L__BB23_31;
+	ld.shared.u64 	%rd82, [_ZZ24device_write_kernel_syncP10ulonglong2mmPlS1_E6clocks];
+	@%p16 bra 	$L__BB25_31;
 
-	setp.lt.u64 	%p17, %rd8, 3;
-	mov.u64 	%rd79, 1;
-	@%p17 bra 	$L__BB23_27;
+	setp.lt.u64 	%p17, %rd9, 3;
+	mov.u64 	%rd80, 1;
+	@%p17 bra 	$L__BB25_27;
 
-	mov.u64 	%rd79, 1;
-	mov.u64 	%rd77, %rd9;
+	mov.u64 	%rd80, 1;
+	mov.u64 	%rd78, %rd10;
 
-$L__BB23_26:
-	cvt.u32.u64 	%r45, %rd79;
+$L__BB25_26:
+	cvt.u32.u64 	%r45, %rd80;
 	shl.b32 	%r46, %r45, 3;
 	add.s32 	%r48, %r30, %r46;
-	ld.shared.u64 	%rd59, [%r48];
-	max.s64 	%rd60, %rd81, %rd59;
-	ld.shared.u64 	%rd61, [%r48+8];
-	max.s64 	%rd62, %rd60, %rd61;
-	ld.shared.u64 	%rd63, [%r48+16];
-	max.s64 	%rd64, %rd62, %rd63;
-	ld.shared.u64 	%rd65, [%r48+24];
-	max.s64 	%rd81, %rd64, %rd65;
-	add.s64 	%rd79, %rd79, 4;
-	add.s64 	%rd77, %rd77, -4;
-	setp.ne.s64 	%p18, %rd77, 0;
-	@%p18 bra 	$L__BB23_26;
+	ld.shared.u64 	%rd60, [%r48];
+	max.s64 	%rd61, %rd82, %rd60;
+	ld.shared.u64 	%rd62, [%r48+8];
+	max.s64 	%rd63, %rd61, %rd62;
+	ld.shared.u64 	%rd64, [%r48+16];
+	max.s64 	%rd65, %rd63, %rd64;
+	ld.shared.u64 	%rd66, [%r48+24];
+	max.s64 	%rd82, %rd65, %rd66;
+	add.s64 	%rd80, %rd80, 4;
+	add.s64 	%rd78, %rd78, -4;
+	setp.ne.s64 	%p18, %rd78, 0;
+	@%p18 bra 	$L__BB25_26;
 
-$L__BB23_27:
+$L__BB25_27:
 	setp.eq.s32 	%p19, %r8, 0;
-	@%p19 bra 	$L__BB23_31;
+	@%p19 bra 	$L__BB25_31;
 
 	setp.eq.s32 	%p20, %r8, 1;
-	cvt.u32.u64 	%r49, %rd79;
+	cvt.u32.u64 	%r49, %rd80;
 	shl.b32 	%r50, %r49, 3;
 	add.s32 	%r12, %r30, %r50;
-	ld.shared.u64 	%rd66, [%r12];
-	max.s64 	%rd81, %rd81, %rd66;
-	@%p20 bra 	$L__BB23_31;
+	ld.shared.u64 	%rd67, [%r12];
+	max.s64 	%rd82, %rd82, %rd67;
+	@%p20 bra 	$L__BB25_31;
 
 	setp.eq.s32 	%p21, %r8, 2;
-	ld.shared.u64 	%rd67, [%r12+8];
-	max.s64 	%rd81, %rd81, %rd67;
-	@%p21 bra 	$L__BB23_31;
+	ld.shared.u64 	%rd68, [%r12+8];
+	max.s64 	%rd82, %rd82, %rd68;
+	@%p21 bra 	$L__BB25_31;
 
-	ld.shared.u64 	%rd68, [%r12+16];
-	max.s64 	%rd81, %rd81, %rd68;
+	ld.shared.u64 	%rd69, [%r12+16];
+	max.s64 	%rd82, %rd82, %rd69;
 
-$L__BB23_31:
-	mul.lo.s64 	%rd69, %rd73, %rd6;
-	add.s64 	%rd70, %rd69, %rd7;
-	shl.b64 	%rd71, %rd70, 3;
-	add.s64 	%rd72, %rd10, %rd71;
-	st.global.u64 	[%rd72], %rd81;
+$L__BB25_31:
+	mul.lo.s64 	%rd70, %rd74, %rd7;
+	add.s64 	%rd71, %rd70, %rd8;
+	shl.b64 	%rd72, %rd71, 3;
+	add.s64 	%rd73, %rd11, %rd72;
+	st.global.u64 	[%rd73], %rd82;
 
-$L__BB23_32:
-	add.s64 	%rd73, %rd73, 1;
-	setp.lt.u64 	%p22, %rd73, %rd33;
-	@%p22 bra 	$L__BB23_2;
+$L__BB25_32:
+	add.s64 	%rd74, %rd74, 1;
+	setp.lt.u64 	%p22, %rd74, %rd34;
+	@%p22 bra 	$L__BB25_2;
 
-$L__BB23_33:
+$L__BB25_33:
 	ret;
 
 }
@@ -2289,7 +2357,7 @@ $L__BB23_33:
 	cvt.u64.u32 	%rd24, %r11;
 	bfi.b64 	%rd3, %rd24, %rd23, 32, 32;
 	setp.eq.s64 	%p1, %rd19, 0;
-	@%p1 bra 	$L__BB24_23;
+	@%p1 bra 	$L__BB26_23;
 
 	add.s64 	%rd4, %rd3, 4;
 	mov.u32 	%r13, %tid.y;
@@ -2317,113 +2385,113 @@ $L__BB23_33:
 	cvta.to.global.u64 	%rd9, %rd17;
 	mov.u64 	%rd46, 0;
 
-$L__BB24_2:
+$L__BB26_2:
 	setp.ne.s64 	%p3, %rd3, 0;
-	@%p3 bra 	$L__BB24_4;
+	@%p3 bra 	$L__BB26_4;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB24_4:
+$L__BB26_4:
 	setp.ne.s32 	%p4, %r4, %r5;
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB24_7;
+	@%p4 bra 	$L__BB26_7;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r27,[%rd4],%r6;
 	// end inline asm
 
-$L__BB24_6:
+$L__BB26_6:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r29,[%rd4];
 	// end inline asm
 	xor.b32  	%r30, %r29, %r27;
 	setp.gt.s32 	%p5, %r30, -1;
-	@%p5 bra 	$L__BB24_6;
+	@%p5 bra 	$L__BB26_6;
 
-$L__BB24_7:
+$L__BB26_7:
 	barrier.sync 	0;
 	// begin inline asm
 	mov.u64 %rd28, %globaltimer;
 	// end inline asm
 	add.s64 	%rd29, %rd28, 1000000;
 	st.global.u64 	[%rd1], %rd29;
-	@%p3 bra 	$L__BB24_9;
+	@%p3 bra 	$L__BB26_9;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB24_9:
+$L__BB26_9:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB24_12;
+	@%p4 bra 	$L__BB26_12;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r31,[%rd4],%r6;
 	// end inline asm
 
-$L__BB24_11:
+$L__BB26_11:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r33,[%rd4];
 	// end inline asm
 	xor.b32  	%r34, %r33, %r31;
 	setp.gt.s32 	%p8, %r34, -1;
-	@%p8 bra 	$L__BB24_11;
+	@%p8 bra 	$L__BB26_11;
 
-$L__BB24_12:
+$L__BB26_12:
 	barrier.sync 	0;
 	bar.sync 	0;
 	ld.global.u64 	%rd11, [%rd1];
 
-$L__BB24_13:
+$L__BB26_13:
 	// begin inline asm
 	mov.u64 %rd32, %globaltimer;
 	// end inline asm
 	setp.lt.s64 	%p9, %rd32, %rd11;
-	@%p9 bra 	$L__BB24_13;
+	@%p9 bra 	$L__BB26_13;
 
 	setp.ge.u64 	%p10, %rd2, %rd18;
-	@%p10 bra 	$L__BB24_17;
+	@%p10 bra 	$L__BB26_17;
 
 	mov.u64 	%rd47, %rd2;
 
-$L__BB24_16:
+$L__BB26_16:
 	shl.b64 	%rd33, %rd47, 3;
 	add.s64 	%rd34, %rd9, %rd33;
 	mov.u64 	%rd35, 0;
 	st.global.u64 	[%rd34], %rd35;
 	add.s64 	%rd47, %rd47, %rd5;
 	setp.lt.u64 	%p11, %rd47, %rd18;
-	@%p11 bra 	$L__BB24_16;
+	@%p11 bra 	$L__BB26_16;
 
-$L__BB24_17:
+$L__BB26_17:
 	// begin inline asm
 	mov.u64 %rd36, %globaltimer;
 	// end inline asm
-	@%p3 bra 	$L__BB24_19;
+	@%p3 bra 	$L__BB26_19;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB24_19:
+$L__BB26_19:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB24_22;
+	@%p4 bra 	$L__BB26_22;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r35,[%rd4],%r6;
 	// end inline asm
 
-$L__BB24_21:
+$L__BB26_21:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r37,[%rd4];
 	// end inline asm
 	xor.b32  	%r38, %r37, %r35;
 	setp.gt.s32 	%p14, %r38, -1;
-	@%p14 bra 	$L__BB24_21;
+	@%p14 bra 	$L__BB26_21;
 
-$L__BB24_22:
+$L__BB26_22:
 	barrier.sync 	0;
 	mul.lo.s64 	%rd39, %rd6, %rd46;
 	add.s64 	%rd40, %rd39, %rd2;
@@ -2436,9 +2504,9 @@ $L__BB24_22:
 	st.global.u64 	[%rd44], %rd45;
 	add.s64 	%rd46, %rd46, 1;
 	setp.lt.u64 	%p15, %rd46, %rd19;
-	@%p15 bra 	$L__BB24_2;
+	@%p15 bra 	$L__BB26_2;
 
-$L__BB24_23:
+$L__BB26_23:
 	ret;
 
 }
@@ -2481,7 +2549,7 @@ $L__BB24_23:
 	cvt.u64.u32 	%rd39, %r14;
 	bfi.b64 	%rd3, %rd39, %rd38, 32, 32;
 	setp.eq.s64 	%p1, %rd35, 0;
-	@%p1 bra 	$L__BB25_33;
+	@%p1 bra 	$L__BB27_33;
 
 	add.s64 	%rd4, %rd3, 4;
 	mov.u32 	%r16, %tid.y;
@@ -2520,78 +2588,78 @@ $L__BB24_23:
 	cvta.to.global.u64 	%rd12, %rd33;
 	mov.u64 	%rd75, 0;
 
-$L__BB25_2:
+$L__BB27_2:
 	setp.ne.s64 	%p3, %rd3, 0;
-	@%p3 bra 	$L__BB25_4;
+	@%p3 bra 	$L__BB27_4;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB25_4:
+$L__BB27_4:
 	setp.ne.s32 	%p4, %r4, %r5;
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB25_7;
+	@%p4 bra 	$L__BB27_7;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r33,[%rd4],%r6;
 	// end inline asm
 
-$L__BB25_6:
+$L__BB27_6:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r35,[%rd4];
 	// end inline asm
 	xor.b32  	%r36, %r35, %r33;
 	setp.gt.s32 	%p5, %r36, -1;
-	@%p5 bra 	$L__BB25_6;
+	@%p5 bra 	$L__BB27_6;
 
-$L__BB25_7:
+$L__BB27_7:
 	barrier.sync 	0;
 	// begin inline asm
 	mov.u64 %rd46, %globaltimer;
 	// end inline asm
 	add.s64 	%rd47, %rd46, 1000000;
 	st.global.u64 	[%rd1], %rd47;
-	@%p3 bra 	$L__BB25_9;
+	@%p3 bra 	$L__BB27_9;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB25_9:
+$L__BB27_9:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB25_12;
+	@%p4 bra 	$L__BB27_12;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r37,[%rd4],%r6;
 	// end inline asm
 
-$L__BB25_11:
+$L__BB27_11:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r39,[%rd4];
 	// end inline asm
 	xor.b32  	%r40, %r39, %r37;
 	setp.gt.s32 	%p8, %r40, -1;
-	@%p8 bra 	$L__BB25_11;
+	@%p8 bra 	$L__BB27_11;
 
-$L__BB25_12:
+$L__BB27_12:
 	barrier.sync 	0;
 	bar.sync 	0;
 	ld.global.u64 	%rd14, [%rd1];
 
-$L__BB25_13:
+$L__BB27_13:
 	// begin inline asm
 	mov.u64 %rd50, %globaltimer;
 	// end inline asm
 	setp.lt.s64 	%p9, %rd50, %rd14;
-	@%p9 bra 	$L__BB25_13;
+	@%p9 bra 	$L__BB27_13;
 
 	setp.ge.u64 	%p10, %rd2, %rd34;
-	@%p10 bra 	$L__BB25_17;
+	@%p10 bra 	$L__BB27_17;
 
 	mov.u64 	%rd76, %rd2;
 
-$L__BB25_16:
+$L__BB27_16:
 	shl.b64 	%rd51, %rd76, 3;
 	add.s64 	%rd52, %rd11, %rd51;
 	ld.global.f64 	%fd1, [%rd52];
@@ -2599,53 +2667,53 @@ $L__BB25_16:
 	st.global.f64 	[%rd53], %fd1;
 	add.s64 	%rd76, %rd76, %rd5;
 	setp.lt.u64 	%p11, %rd76, %rd34;
-	@%p11 bra 	$L__BB25_16;
+	@%p11 bra 	$L__BB27_16;
 
-$L__BB25_17:
+$L__BB27_17:
 	// begin inline asm
 	mov.u64 %rd54, %globaltimer;
 	// end inline asm
 	sub.s64 	%rd55, %rd54, %rd14;
 	st.shared.u64 	[%r7], %rd55;
-	@%p3 bra 	$L__BB25_19;
+	@%p3 bra 	$L__BB27_19;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB25_19:
+$L__BB27_19:
 	barrier.sync 	0;
-	@%p4 bra 	$L__BB25_22;
+	@%p4 bra 	$L__BB27_22;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r41,[%rd4],%r6;
 	// end inline asm
 
-$L__BB25_21:
+$L__BB27_21:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r43,[%rd4];
 	// end inline asm
 	xor.b32  	%r44, %r43, %r41;
 	setp.gt.s32 	%p14, %r44, -1;
-	@%p14 bra 	$L__BB25_21;
+	@%p14 bra 	$L__BB27_21;
 
-$L__BB25_22:
+$L__BB27_22:
 	setp.ne.s32 	%p15, %r3, 0;
 	barrier.sync 	0;
-	@%p15 bra 	$L__BB25_32;
+	@%p15 bra 	$L__BB27_32;
 
 	setp.lt.u32 	%p16, %r1, 2;
 	ld.shared.u64 	%rd83, [_ZZ23device_copy_kernel_syncPdS_mmPlS0_E6clocks];
-	@%p16 bra 	$L__BB25_31;
+	@%p16 bra 	$L__BB27_31;
 
 	setp.lt.u64 	%p17, %rd8, 3;
 	mov.u64 	%rd81, 1;
-	@%p17 bra 	$L__BB25_27;
+	@%p17 bra 	$L__BB27_27;
 
 	mov.u64 	%rd81, 1;
 	mov.u64 	%rd79, %rd9;
 
-$L__BB25_26:
+$L__BB27_26:
 	cvt.u32.u64 	%r45, %rd81;
 	shl.b32 	%r46, %r45, 3;
 	add.s32 	%r48, %r30, %r46;
@@ -2660,11 +2728,11 @@ $L__BB25_26:
 	add.s64 	%rd81, %rd81, 4;
 	add.s64 	%rd79, %rd79, -4;
 	setp.ne.s64 	%p18, %rd79, 0;
-	@%p18 bra 	$L__BB25_26;
+	@%p18 bra 	$L__BB27_26;
 
-$L__BB25_27:
+$L__BB27_27:
 	setp.eq.s32 	%p19, %r8, 0;
-	@%p19 bra 	$L__BB25_31;
+	@%p19 bra 	$L__BB27_31;
 
 	setp.eq.s32 	%p20, %r8, 1;
 	cvt.u32.u64 	%r49, %rd81;
@@ -2672,29 +2740,29 @@ $L__BB25_27:
 	add.s32 	%r12, %r30, %r50;
 	ld.shared.u64 	%rd68, [%r12];
 	max.s64 	%rd83, %rd83, %rd68;
-	@%p20 bra 	$L__BB25_31;
+	@%p20 bra 	$L__BB27_31;
 
 	setp.eq.s32 	%p21, %r8, 2;
 	ld.shared.u64 	%rd69, [%r12+8];
 	max.s64 	%rd83, %rd83, %rd69;
-	@%p21 bra 	$L__BB25_31;
+	@%p21 bra 	$L__BB27_31;
 
 	ld.shared.u64 	%rd70, [%r12+16];
 	max.s64 	%rd83, %rd83, %rd70;
 
-$L__BB25_31:
+$L__BB27_31:
 	mul.lo.s64 	%rd71, %rd75, %rd6;
 	add.s64 	%rd72, %rd71, %rd7;
 	shl.b64 	%rd73, %rd72, 3;
 	add.s64 	%rd74, %rd10, %rd73;
 	st.global.u64 	[%rd74], %rd83;
 
-$L__BB25_32:
+$L__BB27_32:
 	add.s64 	%rd75, %rd75, 1;
 	setp.lt.u64 	%p22, %rd75, %rd35;
-	@%p22 bra 	$L__BB25_2;
+	@%p22 bra 	$L__BB27_2;
 
-$L__BB25_33:
+$L__BB27_33:
 	ret;
 
 }
@@ -2706,7 +2774,7 @@ $L__BB25_33:
 	.param .u64 _Z24device_read_kernel_blockPmmmPl_param_3
 )
 {
-	.local .align 16 .b8 	__local_depot26[80];
+	.local .align 16 .b8 	__local_depot28[80];
 	.reg .b64 	%SP;
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<24>;
@@ -2715,7 +2783,7 @@ $L__BB25_33:
 	// demoted variable
 	.shared .align 8 .b8 _ZZ24device_read_kernel_blockPmmmPlE6clocks[8200];
 
-	mov.u64 	%SPL, __local_depot26;
+	mov.u64 	%SPL, __local_depot28;
 	cvta.local.u64 	%SP, %SPL;
 	ld.param.u64 	%rd136, [_Z24device_read_kernel_blockPmmmPl_param_0];
 	ld.param.u64 	%rd133, [_Z24device_read_kernel_blockPmmmPl_param_1];
@@ -2725,7 +2793,7 @@ $L__BB25_33:
 	add.u64 	%rd2, %SPL, 0;
 	mov.u32 	%r5, %ctaid.x;
 	setp.eq.s32 	%p1, %r5, 0;
-	@%p1 bra 	$L__BB26_2;
+	@%p1 bra 	$L__BB28_2;
 
 	mov.u64 	%rd138, $str$3;
 	cvta.global.u64 	%rd139, %rd138;
@@ -2740,7 +2808,7 @@ $L__BB25_33:
 	.param .b64 param1;
 	st.param.b64 	[param1+0], %rd141;
 	.param .b32 param2;
-	st.param.b32 	[param2+0], 296;
+	st.param.b32 	[param2+0], 293;
 	.param .b64 param3;
 	st.param.b64 	[param3+0], %rd143;
 	.param .b64 param4;
@@ -2756,33 +2824,33 @@ $L__BB25_33:
 	);
 	} // callseq 2
 
-$L__BB26_2:
+$L__BB28_2:
 	mov.u32 	%r6, %tid.x;
 	cvt.u64.u32 	%rd3, %r6;
 	shr.u64 	%rd4, %rd133, 10;
 	setp.ge.u64 	%p2, %rd3, %rd133;
-	@%p2 bra 	$L__BB26_6;
+	@%p2 bra 	$L__BB28_6;
 
 	mov.u64 	%rd285, %rd3;
 
-$L__BB26_4:
+$L__BB28_4:
 	shl.b64 	%rd146, %rd285, 3;
 	add.s64 	%rd147, %rd1, %rd146;
 	ld.global.u64 	%rd148, [%rd147];
 	xor.b64  	%rd333, %rd333, %rd148;
 	add.s64 	%rd285, %rd285, 1024;
 	setp.lt.u64 	%p3, %rd285, %rd133;
-	@%p3 bra 	$L__BB26_4;
+	@%p3 bra 	$L__BB28_4;
 
 	st.local.u64 	[%rd2], %rd333;
 
-$L__BB26_6:
+$L__BB28_6:
 	cvt.u32.u64 	%r7, %rd3;
 	shl.b32 	%r8, %r7, 3;
 	mov.u32 	%r9, _ZZ24device_read_kernel_blockPmmmPlE6clocks;
 	add.s32 	%r1, %r9, %r8;
 	setp.eq.s64 	%p4, %rd134, 0;
-	@%p4 bra 	$L__BB26_34;
+	@%p4 bra 	$L__BB28_34;
 
 	mov.u32 	%r2, %ntid.x;
 	cvt.u64.u32 	%rd151, %r2;
@@ -2804,11 +2872,11 @@ $L__BB26_6:
 	cvta.to.global.u64 	%rd17, %rd135;
 	mov.u64 	%rd295, 0;
 
-$L__BB26_8:
+$L__BB28_8:
 	cvt.u32.u64 	%r22, %rd3;
 	setp.ne.s32 	%p5, %r22, 0;
 	bar.sync 	0;
-	@%p5 bra 	$L__BB26_10;
+	@%p5 bra 	$L__BB28_10;
 
 	// begin inline asm
 	mov.u64 	%rd159, %clock64;
@@ -2816,32 +2884,32 @@ $L__BB26_8:
 	add.s64 	%rd160, %rd159, 19799997;
 	st.shared.u64 	[_ZZ24device_read_kernel_blockPmmmPlE6clocks+8192], %rd160;
 
-$L__BB26_10:
+$L__BB28_10:
 	bar.sync 	0;
 	ld.shared.u64 	%rd27, [_ZZ24device_read_kernel_blockPmmmPlE6clocks+8192];
 
-$L__BB26_11:
+$L__BB28_11:
 	// begin inline asm
 	mov.u64 	%rd161, %clock64;
 	// end inline asm
 	setp.lt.s64 	%p6, %rd161, %rd27;
-	@%p6 bra 	$L__BB26_11;
+	@%p6 bra 	$L__BB28_11;
 
 	setp.eq.s64 	%p7, %rd4, 0;
-	@%p7 bra 	$L__BB26_22;
+	@%p7 bra 	$L__BB28_22;
 
 	mov.u64 	%rd304, 0;
 
-$L__BB26_14:
+$L__BB28_14:
 	mov.u64 	%rd332, 0;
 	setp.lt.u64 	%p8, %rd11, 24;
-	@%p8 bra 	$L__BB26_17;
+	@%p8 bra 	$L__BB28_17;
 
 	mov.u64 	%rd332, 0;
 	mov.u64 	%rd305, %rd16;
 	mov.u64 	%rd306, %rd15;
 
-$L__BB26_16:
+$L__BB28_16:
 	ld.global.u64 	%rd166, [%rd305+-128];
 	xor.b64  	%rd167, %rd333, %rd166;
 	ld.global.u64 	%rd168, [%rd305+-120];
@@ -2910,11 +2978,11 @@ $L__BB26_16:
 	add.s64 	%rd305, %rd305, 256;
 	add.s64 	%rd306, %rd306, 4;
 	setp.ne.s64 	%p9, %rd306, 0;
-	@%p9 bra 	$L__BB26_16;
+	@%p9 bra 	$L__BB28_16;
 
-$L__BB26_17:
+$L__BB28_17:
 	setp.eq.s64 	%p10, %rd13, 0;
-	@%p10 bra 	$L__BB26_21;
+	@%p10 bra 	$L__BB28_21;
 
 	setp.eq.s64 	%p11, %rd13, 1;
 	add.s64 	%rd222, %rd332, %rd3;
@@ -2936,7 +3004,7 @@ $L__BB26_17:
 	xor.b64  	%rd339, %rd339, %rd230;
 	ld.global.u64 	%rd231, [%rd76+56];
 	xor.b64  	%rd340, %rd340, %rd231;
-	@%p11 bra 	$L__BB26_21;
+	@%p11 bra 	$L__BB28_21;
 
 	setp.eq.s64 	%p12, %rd13, 2;
 	ld.global.u64 	%rd232, [%rd76+64];
@@ -2955,7 +3023,7 @@ $L__BB26_17:
 	xor.b64  	%rd339, %rd339, %rd238;
 	ld.global.u64 	%rd239, [%rd76+120];
 	xor.b64  	%rd340, %rd340, %rd239;
-	@%p12 bra 	$L__BB26_21;
+	@%p12 bra 	$L__BB28_21;
 
 	ld.global.u64 	%rd240, [%rd76+128];
 	xor.b64  	%rd333, %rd333, %rd240;
@@ -2974,12 +3042,12 @@ $L__BB26_17:
 	ld.global.u64 	%rd247, [%rd76+184];
 	xor.b64  	%rd340, %rd340, %rd247;
 
-$L__BB26_21:
+$L__BB28_21:
 	add.s64 	%rd304, %rd304, 1;
 	setp.lt.u64 	%p13, %rd304, 8192;
-	@%p13 bra 	$L__BB26_14;
+	@%p13 bra 	$L__BB28_14;
 
-$L__BB26_22:
+$L__BB28_22:
 	cvt.u32.u64 	%r21, %rd3;
 	setp.ne.s32 	%p23, %r21, 0;
 	// begin inline asm
@@ -2987,20 +3055,20 @@ $L__BB26_22:
 	// end inline asm
 	st.shared.u64 	[%r1], %rd248;
 	bar.sync 	0;
-	@%p23 bra 	$L__BB26_32;
+	@%p23 bra 	$L__BB28_32;
 
 	setp.lt.u32 	%p15, %r2, 2;
 	ld.shared.u64 	%rd355, [_ZZ24device_read_kernel_blockPmmmPlE6clocks];
-	@%p15 bra 	$L__BB26_31;
+	@%p15 bra 	$L__BB28_31;
 
 	setp.lt.u64 	%p16, %rd12, 3;
 	mov.u64 	%rd353, 1;
-	@%p16 bra 	$L__BB26_27;
+	@%p16 bra 	$L__BB28_27;
 
 	mov.u64 	%rd353, 1;
 	mov.u64 	%rd351, %rd14;
 
-$L__BB26_26:
+$L__BB28_26:
 	cvt.u32.u64 	%r13, %rd353;
 	shl.b32 	%r14, %r13, 3;
 	add.s32 	%r16, %r9, %r14;
@@ -3015,11 +3083,11 @@ $L__BB26_26:
 	add.s64 	%rd353, %rd353, 4;
 	add.s64 	%rd351, %rd351, -4;
 	setp.ne.s64 	%p17, %rd351, 0;
-	@%p17 bra 	$L__BB26_26;
+	@%p17 bra 	$L__BB28_26;
 
-$L__BB26_27:
+$L__BB28_27:
 	setp.eq.s32 	%p18, %r3, 0;
-	@%p18 bra 	$L__BB26_31;
+	@%p18 bra 	$L__BB28_31;
 
 	setp.eq.s32 	%p19, %r3, 1;
 	cvt.u32.u64 	%r17, %rd353;
@@ -3027,7 +3095,7 @@ $L__BB26_27:
 	add.s32 	%r4, %r9, %r18;
 	ld.shared.u64 	%rd259, [%r4];
 	max.s64 	%rd355, %rd355, %rd259;
-	@%p19 bra 	$L__BB26_31;
+	@%p19 bra 	$L__BB28_31;
 
 	cvt.u32.u64 	%r25, %rd353;
 	shl.b32 	%r24, %r25, 3;
@@ -3035,7 +3103,7 @@ $L__BB26_27:
 	setp.eq.s32 	%p20, %r3, 2;
 	ld.shared.u64 	%rd260, [%r23+8];
 	max.s64 	%rd355, %rd355, %rd260;
-	@%p20 bra 	$L__BB26_31;
+	@%p20 bra 	$L__BB28_31;
 
 	cvt.u32.u64 	%r28, %rd353;
 	shl.b32 	%r27, %r28, 3;
@@ -3043,7 +3111,7 @@ $L__BB26_27:
 	ld.shared.u64 	%rd261, [%r26+16];
 	max.s64 	%rd355, %rd355, %rd261;
 
-$L__BB26_31:
+$L__BB28_31:
 	sub.s64 	%rd262, %rd355, %rd27;
 	shr.s64 	%rd263, %rd262, 63;
 	shr.u64 	%rd264, %rd263, 51;
@@ -3053,11 +3121,11 @@ $L__BB26_31:
 	add.s64 	%rd268, %rd17, %rd267;
 	st.global.u64 	[%rd268], %rd266;
 
-$L__BB26_32:
+$L__BB28_32:
 	ld.param.u64 	%rd278, [_Z24device_read_kernel_blockPmmmPl_param_2];
 	add.s64 	%rd295, %rd295, 1;
 	setp.lt.u64 	%p21, %rd295, %rd278;
-	@%p21 bra 	$L__BB26_8;
+	@%p21 bra 	$L__BB28_8;
 
 	add.u64 	%rd279, %SPL, 0;
 	st.local.v2.u64 	[%rd279], {%rd333, %rd334};
@@ -3065,10 +3133,10 @@ $L__BB26_32:
 	st.local.v2.u64 	[%rd279+32], {%rd337, %rd338};
 	st.local.v2.u64 	[%rd279+48], {%rd339, %rd340};
 
-$L__BB26_34:
+$L__BB28_34:
 	ld.shared.u64 	%rd269, [%r1];
 	setp.ge.u64 	%p22, %rd269, %rd3;
-	@%p22 bra 	$L__BB26_36;
+	@%p22 bra 	$L__BB28_36;
 
 	add.u64 	%rd281, %SPL, 0;
 	shl.b64 	%rd270, %rd3, 3;
@@ -3096,7 +3164,7 @@ $L__BB26_34:
 	ld.param.b32 	%r20, [retval0+0];
 	} // callseq 3
 
-$L__BB26_36:
+$L__BB28_36:
 	ret;
 
 }
@@ -3124,7 +3192,7 @@ $L__BB26_36:
 	mad.lo.s32 	%r8, %r7, %r1, %r2;
 	cvt.u64.u32 	%rd1, %r8;
 	setp.eq.s64 	%p1, %rd28, 0;
-	@%p1 bra 	$L__BB27_20;
+	@%p1 bra 	$L__BB29_20;
 
 	cvt.u32.u64 	%r3, %rd1;
 	shl.b32 	%r9, %r2, 3;
@@ -3144,10 +3212,10 @@ $L__BB26_36:
 	cvta.to.global.u64 	%rd6, %rd26;
 	mov.u64 	%rd57, 0;
 
-$L__BB27_2:
+$L__BB29_2:
 	bar.sync 	0;
 	setp.ne.s32 	%p2, %r3, 0;
-	@%p2 bra 	$L__BB27_4;
+	@%p2 bra 	$L__BB29_4;
 
 	// begin inline asm
 	mov.u64 	%rd34, %clock64;
@@ -3155,52 +3223,52 @@ $L__BB27_2:
 	add.s64 	%rd35, %rd34, 19799997;
 	st.shared.u64 	[_ZZ25device_write_kernel_blockPdmmPlE6clocks+8192], %rd35;
 
-$L__BB27_4:
+$L__BB29_4:
 	bar.sync 	0;
 	ld.shared.u64 	%rd8, [_ZZ25device_write_kernel_blockPdmmPlE6clocks+8192];
 
-$L__BB27_5:
+$L__BB29_5:
 	// begin inline asm
 	mov.u64 	%rd36, %clock64;
 	// end inline asm
 	setp.lt.s64 	%p3, %rd36, %rd8;
-	@%p3 bra 	$L__BB27_5;
+	@%p3 bra 	$L__BB29_5;
 
 	setp.ge.u64 	%p4, %rd1, %rd27;
-	@%p4 bra 	$L__BB27_9;
+	@%p4 bra 	$L__BB29_9;
 
 	mov.u64 	%rd58, %rd1;
 
-$L__BB27_8:
+$L__BB29_8:
 	shl.b64 	%rd37, %rd58, 3;
 	add.s64 	%rd38, %rd6, %rd37;
 	mov.u64 	%rd39, 0;
 	st.global.u64 	[%rd38], %rd39;
 	add.s64 	%rd58, %rd58, %rd2;
 	setp.lt.u64 	%p5, %rd58, %rd27;
-	@%p5 bra 	$L__BB27_8;
+	@%p5 bra 	$L__BB29_8;
 
-$L__BB27_9:
+$L__BB29_9:
 	// begin inline asm
 	mov.u64 	%rd40, %clock64;
 	// end inline asm
 	sub.s64 	%rd41, %rd40, %rd8;
 	st.shared.u64 	[%r4], %rd41;
 	bar.sync 	0;
-	@%p2 bra 	$L__BB27_19;
+	@%p2 bra 	$L__BB29_19;
 
 	setp.lt.u32 	%p7, %r1, 2;
 	ld.shared.u64 	%rd65, [_ZZ25device_write_kernel_blockPdmmPlE6clocks];
-	@%p7 bra 	$L__BB27_18;
+	@%p7 bra 	$L__BB29_18;
 
 	setp.lt.u64 	%p8, %rd3, 3;
 	mov.u64 	%rd63, 1;
-	@%p8 bra 	$L__BB27_14;
+	@%p8 bra 	$L__BB29_14;
 
 	mov.u64 	%rd63, 1;
 	mov.u64 	%rd61, %rd4;
 
-$L__BB27_13:
+$L__BB29_13:
 	cvt.u32.u64 	%r14, %rd63;
 	shl.b32 	%r15, %r14, 3;
 	add.s32 	%r17, %r10, %r15;
@@ -3215,11 +3283,11 @@ $L__BB27_13:
 	add.s64 	%rd63, %rd63, 4;
 	add.s64 	%rd61, %rd61, -4;
 	setp.ne.s64 	%p9, %rd61, 0;
-	@%p9 bra 	$L__BB27_13;
+	@%p9 bra 	$L__BB29_13;
 
-$L__BB27_14:
+$L__BB29_14:
 	setp.eq.s32 	%p10, %r5, 0;
-	@%p10 bra 	$L__BB27_18;
+	@%p10 bra 	$L__BB29_18;
 
 	setp.eq.s32 	%p11, %r5, 1;
 	cvt.u32.u64 	%r18, %rd63;
@@ -3227,27 +3295,27 @@ $L__BB27_14:
 	add.s32 	%r6, %r10, %r19;
 	ld.shared.u64 	%rd52, [%r6];
 	max.s64 	%rd65, %rd65, %rd52;
-	@%p11 bra 	$L__BB27_18;
+	@%p11 bra 	$L__BB29_18;
 
 	setp.eq.s32 	%p12, %r5, 2;
 	ld.shared.u64 	%rd53, [%r6+8];
 	max.s64 	%rd65, %rd65, %rd53;
-	@%p12 bra 	$L__BB27_18;
+	@%p12 bra 	$L__BB29_18;
 
 	ld.shared.u64 	%rd54, [%r6+16];
 	max.s64 	%rd65, %rd65, %rd54;
 
-$L__BB27_18:
+$L__BB29_18:
 	shl.b64 	%rd55, %rd57, 3;
 	add.s64 	%rd56, %rd5, %rd55;
 	st.global.u64 	[%rd56], %rd65;
 
-$L__BB27_19:
+$L__BB29_19:
 	add.s64 	%rd57, %rd57, 1;
 	setp.lt.u64 	%p13, %rd57, %rd28;
-	@%p13 bra 	$L__BB27_2;
+	@%p13 bra 	$L__BB29_2;
 
-$L__BB27_20:
+$L__BB29_20:
 	ret;
 
 }
@@ -3278,7 +3346,7 @@ $L__BB27_20:
 	mad.lo.s32 	%r8, %r7, %r1, %r2;
 	cvt.u64.u32 	%rd1, %r8;
 	setp.eq.s64 	%p1, %rd30, 0;
-	@%p1 bra 	$L__BB28_20;
+	@%p1 bra 	$L__BB30_20;
 
 	cvt.u32.u64 	%r3, %rd1;
 	shl.b32 	%r9, %r2, 3;
@@ -3299,10 +3367,10 @@ $L__BB27_20:
 	cvta.to.global.u64 	%rd7, %rd28;
 	mov.u64 	%rd59, 0;
 
-$L__BB28_2:
+$L__BB30_2:
 	bar.sync 	0;
 	setp.ne.s32 	%p2, %r3, 0;
-	@%p2 bra 	$L__BB28_4;
+	@%p2 bra 	$L__BB30_4;
 
 	// begin inline asm
 	mov.u64 	%rd36, %clock64;
@@ -3310,23 +3378,23 @@ $L__BB28_2:
 	add.s64 	%rd37, %rd36, 19799997;
 	st.shared.u64 	[_ZZ24device_copy_kernel_blockPdS_mmPlE6clocks+8192], %rd37;
 
-$L__BB28_4:
+$L__BB30_4:
 	bar.sync 	0;
 	ld.shared.u64 	%rd9, [_ZZ24device_copy_kernel_blockPdS_mmPlE6clocks+8192];
 
-$L__BB28_5:
+$L__BB30_5:
 	// begin inline asm
 	mov.u64 	%rd38, %clock64;
 	// end inline asm
 	setp.lt.s64 	%p3, %rd38, %rd9;
-	@%p3 bra 	$L__BB28_5;
+	@%p3 bra 	$L__BB30_5;
 
 	setp.ge.u64 	%p4, %rd1, %rd29;
-	@%p4 bra 	$L__BB28_9;
+	@%p4 bra 	$L__BB30_9;
 
 	mov.u64 	%rd60, %rd1;
 
-$L__BB28_8:
+$L__BB30_8:
 	shl.b64 	%rd39, %rd60, 3;
 	add.s64 	%rd40, %rd6, %rd39;
 	ld.global.f64 	%fd1, [%rd40];
@@ -3334,29 +3402,29 @@ $L__BB28_8:
 	st.global.f64 	[%rd41], %fd1;
 	add.s64 	%rd60, %rd60, %rd2;
 	setp.lt.u64 	%p5, %rd60, %rd29;
-	@%p5 bra 	$L__BB28_8;
+	@%p5 bra 	$L__BB30_8;
 
-$L__BB28_9:
+$L__BB30_9:
 	// begin inline asm
 	mov.u64 	%rd42, %clock64;
 	// end inline asm
 	sub.s64 	%rd43, %rd42, %rd9;
 	st.shared.u64 	[%r4], %rd43;
 	bar.sync 	0;
-	@%p2 bra 	$L__BB28_19;
+	@%p2 bra 	$L__BB30_19;
 
 	setp.lt.u32 	%p7, %r1, 2;
 	ld.shared.u64 	%rd67, [_ZZ24device_copy_kernel_blockPdS_mmPlE6clocks];
-	@%p7 bra 	$L__BB28_18;
+	@%p7 bra 	$L__BB30_18;
 
 	setp.lt.u64 	%p8, %rd3, 3;
 	mov.u64 	%rd65, 1;
-	@%p8 bra 	$L__BB28_14;
+	@%p8 bra 	$L__BB30_14;
 
 	mov.u64 	%rd65, 1;
 	mov.u64 	%rd63, %rd4;
 
-$L__BB28_13:
+$L__BB30_13:
 	cvt.u32.u64 	%r14, %rd65;
 	shl.b32 	%r15, %r14, 3;
 	add.s32 	%r17, %r10, %r15;
@@ -3371,11 +3439,11 @@ $L__BB28_13:
 	add.s64 	%rd65, %rd65, 4;
 	add.s64 	%rd63, %rd63, -4;
 	setp.ne.s64 	%p9, %rd63, 0;
-	@%p9 bra 	$L__BB28_13;
+	@%p9 bra 	$L__BB30_13;
 
-$L__BB28_14:
+$L__BB30_14:
 	setp.eq.s32 	%p10, %r5, 0;
-	@%p10 bra 	$L__BB28_18;
+	@%p10 bra 	$L__BB30_18;
 
 	setp.eq.s32 	%p11, %r5, 1;
 	cvt.u32.u64 	%r18, %rd65;
@@ -3383,27 +3451,27 @@ $L__BB28_14:
 	add.s32 	%r6, %r10, %r19;
 	ld.shared.u64 	%rd54, [%r6];
 	max.s64 	%rd67, %rd67, %rd54;
-	@%p11 bra 	$L__BB28_18;
+	@%p11 bra 	$L__BB30_18;
 
 	setp.eq.s32 	%p12, %r5, 2;
 	ld.shared.u64 	%rd55, [%r6+8];
 	max.s64 	%rd67, %rd67, %rd55;
-	@%p12 bra 	$L__BB28_18;
+	@%p12 bra 	$L__BB30_18;
 
 	ld.shared.u64 	%rd56, [%r6+16];
 	max.s64 	%rd67, %rd67, %rd56;
 
-$L__BB28_18:
+$L__BB30_18:
 	shl.b64 	%rd57, %rd59, 3;
 	add.s64 	%rd58, %rd5, %rd57;
 	st.global.u64 	[%rd58], %rd67;
 
-$L__BB28_19:
+$L__BB30_19:
 	add.s64 	%rd59, %rd59, 1;
 	setp.lt.u64 	%p13, %rd59, %rd30;
-	@%p13 bra 	$L__BB28_2;
+	@%p13 bra 	$L__BB30_2;
 
-$L__BB28_20:
+$L__BB30_20:
 	ret;
 
 }
@@ -3415,7 +3483,7 @@ $L__BB28_20:
 	.param .u64 _Z25device_read_kernel_singlePmmmPVl_param_3
 )
 {
-	.local .align 16 .b8 	__local_depot29[80];
+	.local .align 16 .b8 	__local_depot31[80];
 	.reg .b64 	%SP;
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<6>;
@@ -3423,7 +3491,7 @@ $L__BB28_20:
 	.reg .b64 	%rd<101>;
 
 
-	mov.u64 	%SPL, __local_depot29;
+	mov.u64 	%SPL, __local_depot31;
 	cvta.local.u64 	%SP, %SPL;
 	ld.param.u64 	%rd44, [_Z25device_read_kernel_singlePmmmPVl_param_0];
 	ld.param.u64 	%rd45, [_Z25device_read_kernel_singlePmmmPVl_param_1];
@@ -3432,24 +3500,24 @@ $L__BB28_20:
 	cvta.to.global.u64 	%rd1, %rd47;
 	add.u64 	%rd2, %SPL, 0;
 	setp.eq.s64 	%p1, %rd46, 0;
-	@%p1 bra 	$L__BB29_9;
+	@%p1 bra 	$L__BB31_9;
 
 	add.u64 	%rd51, %SP, 64;
 	add.u64 	%rd3, %SPL, 64;
 	cvta.to.global.u64 	%rd4, %rd44;
 	mov.u64 	%rd82, 0;
 
-$L__BB29_2:
+$L__BB31_2:
 	// begin inline asm
 	mov.u64 	%rd52, %clock64;
 	// end inline asm
 	setp.eq.s64 	%p2, %rd45, 0;
-	@%p2 bra 	$L__BB29_6;
+	@%p2 bra 	$L__BB31_6;
 
 	mov.u64 	%rd92, 0;
 	mov.u64 	%rd83, %rd4;
 
-$L__BB29_4:
+$L__BB31_4:
 	ld.global.u64 	%rd54, [%rd83];
 	xor.b64  	%rd100, %rd100, %rd54;
 	ld.global.u64 	%rd55, [%rd83+8];
@@ -3469,14 +3537,14 @@ $L__BB29_4:
 	add.s64 	%rd83, %rd83, 64;
 	add.s64 	%rd92, %rd92, 8;
 	setp.lt.u64 	%p3, %rd92, %rd45;
-	@%p3 bra 	$L__BB29_4;
+	@%p3 bra 	$L__BB31_4;
 
 	st.local.v2.u64 	[%rd2], {%rd100, %rd99};
 	st.local.v2.u64 	[%rd2+16], {%rd98, %rd97};
 	st.local.v2.u64 	[%rd2+32], {%rd96, %rd95};
 	st.local.v2.u64 	[%rd2+48], {%rd94, %rd93};
 
-$L__BB29_6:
+$L__BB31_6:
 	// begin inline asm
 	mov.u64 	%rd62, %clock64;
 	// end inline asm
@@ -3486,7 +3554,7 @@ $L__BB29_6:
 	st.volatile.global.u64 	[%rd65], %rd63;
 	ld.volatile.global.u64 	%rd66, [%rd1];
 	setp.gt.s64 	%p4, %rd66, 7;
-	@%p4 bra 	$L__BB29_8;
+	@%p4 bra 	$L__BB31_8;
 
 	ld.volatile.global.u64 	%rd67, [%rd1];
 	shl.b64 	%rd68, %rd67, 3;
@@ -3511,12 +3579,12 @@ $L__BB29_6:
 	ld.param.b32 	%r1, [retval0+0];
 	} // callseq 4
 
-$L__BB29_8:
+$L__BB31_8:
 	add.s64 	%rd82, %rd82, 1;
 	setp.lt.u64 	%p5, %rd82, %rd46;
-	@%p5 bra 	$L__BB29_2;
+	@%p5 bra 	$L__BB31_2;
 
-$L__BB29_9:
+$L__BB31_9:
 	ret;
 
 }
@@ -3538,23 +3606,23 @@ $L__BB29_9:
 	ld.param.u64 	%rd12, [_Z26device_write_kernel_singlePdmmPl_param_2];
 	ld.param.u64 	%rd13, [_Z26device_write_kernel_singlePdmmPl_param_3];
 	setp.eq.s64 	%p1, %rd12, 0;
-	@%p1 bra 	$L__BB30_6;
+	@%p1 bra 	$L__BB32_6;
 
 	cvta.to.global.u64 	%rd1, %rd13;
 	cvta.to.global.u64 	%rd2, %rd10;
 	mov.u64 	%rd21, 0;
 
-$L__BB30_2:
+$L__BB32_2:
 	// begin inline asm
 	mov.u64 	%rd15, %clock64;
 	// end inline asm
 	setp.eq.s64 	%p2, %rd11, 0;
-	@%p2 bra 	$L__BB30_5;
+	@%p2 bra 	$L__BB32_5;
 
 	mov.u64 	%rd23, 0;
 	mov.u64 	%rd22, %rd2;
 
-$L__BB30_4:
+$L__BB32_4:
 	cvt.rn.f64.u64 	%fd1, %rd23;
 	st.global.f64 	[%rd22], %fd1;
 	st.global.f64 	[%rd22+8], %fd1;
@@ -3567,9 +3635,9 @@ $L__BB30_4:
 	add.s64 	%rd22, %rd22, 64;
 	add.s64 	%rd23, %rd23, 8;
 	setp.lt.u64 	%p3, %rd23, %rd11;
-	@%p3 bra 	$L__BB30_4;
+	@%p3 bra 	$L__BB32_4;
 
-$L__BB30_5:
+$L__BB32_5:
 	// begin inline asm
 	mov.u64 	%rd17, %clock64;
 	// end inline asm
@@ -3579,9 +3647,9 @@ $L__BB30_5:
 	st.global.u64 	[%rd20], %rd18;
 	add.s64 	%rd21, %rd21, 1;
 	setp.lt.u64 	%p4, %rd21, %rd12;
-	@%p4 bra 	$L__BB30_2;
+	@%p4 bra 	$L__BB32_2;
 
-$L__BB30_6:
+$L__BB32_6:
 	ret;
 
 }
@@ -3605,25 +3673,25 @@ $L__BB30_6:
 	ld.param.u64 	%rd16, [_Z25device_copy_kernel_singlePdS_mmPl_param_3];
 	ld.param.u64 	%rd17, [_Z25device_copy_kernel_singlePdS_mmPl_param_4];
 	setp.eq.s64 	%p1, %rd16, 0;
-	@%p1 bra 	$L__BB31_6;
+	@%p1 bra 	$L__BB33_6;
 
 	cvta.to.global.u64 	%rd1, %rd17;
 	cvta.to.global.u64 	%rd2, %rd13;
 	cvta.to.global.u64 	%rd3, %rd14;
 	mov.u64 	%rd25, 0;
 
-$L__BB31_2:
+$L__BB33_2:
 	// begin inline asm
 	mov.u64 	%rd19, %clock64;
 	// end inline asm
 	setp.eq.s64 	%p2, %rd15, 0;
-	@%p2 bra 	$L__BB31_5;
+	@%p2 bra 	$L__BB33_5;
 
 	mov.u64 	%rd28, 0;
 	mov.u64 	%rd26, %rd2;
 	mov.u64 	%rd27, %rd3;
 
-$L__BB31_4:
+$L__BB33_4:
 	ld.global.f64 	%fd1, [%rd26];
 	st.global.f64 	[%rd27], %fd1;
 	ld.global.f64 	%fd2, [%rd26+8];
@@ -3644,9 +3712,9 @@ $L__BB31_4:
 	add.s64 	%rd26, %rd26, 64;
 	add.s64 	%rd28, %rd28, 8;
 	setp.lt.u64 	%p3, %rd28, %rd15;
-	@%p3 bra 	$L__BB31_4;
+	@%p3 bra 	$L__BB33_4;
 
-$L__BB31_5:
+$L__BB33_5:
 	// begin inline asm
 	mov.u64 	%rd21, %clock64;
 	// end inline asm
@@ -3656,9 +3724,9 @@ $L__BB31_5:
 	st.global.u64 	[%rd24], %rd22;
 	add.s64 	%rd25, %rd25, 1;
 	setp.lt.u64 	%p4, %rd25, %rd16;
-	@%p4 bra 	$L__BB31_2;
+	@%p4 bra 	$L__BB33_2;
 
-$L__BB31_6:
+$L__BB33_6:
 	ret;
 
 }
@@ -3670,7 +3738,7 @@ $L__BB31_6:
 	.param .u64 _Z14latency_kernelPhmmPd_param_3
 )
 {
-	.local .align 8 .b8 	__local_depot32[8];
+	.local .align 8 .b8 	__local_depot34[8];
 	.reg .b64 	%SP;
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<10>;
@@ -3679,14 +3747,14 @@ $L__BB31_6:
 	.reg .b64 	%rd<93>;
 
 
-	mov.u64 	%SPL, __local_depot32;
+	mov.u64 	%SPL, __local_depot34;
 	cvta.local.u64 	%SP, %SPL;
 	ld.param.u64 	%rd20, [_Z14latency_kernelPhmmPd_param_0];
 	ld.param.u64 	%rd21, [_Z14latency_kernelPhmmPd_param_1];
 	ld.param.u64 	%rd22, [_Z14latency_kernelPhmmPd_param_2];
 	ld.param.u64 	%rd23, [_Z14latency_kernelPhmmPd_param_3];
 	setp.eq.s64 	%p1, %rd22, 0;
-	@%p1 bra 	$L__BB32_13;
+	@%p1 bra 	$L__BB34_13;
 
 	shr.u64 	%rd1, %rd21, 3;
 	add.s64 	%rd2, %rd1, -1;
@@ -3701,22 +3769,22 @@ $L__BB31_6:
 	cvta.to.global.u64 	%rd6, %rd23;
 	mov.u64 	%rd87, 0;
 
-$L__BB32_2:
+$L__BB34_2:
 	// begin inline asm
 	mov.u64 	%rd26, %clock64;
 	// end inline asm
 	setp.eq.s64 	%p2, %rd1, 0;
 	mov.u64 	%rd92, %rd20;
-	@%p2 bra 	$L__BB32_10;
+	@%p2 bra 	$L__BB34_10;
 
 	setp.lt.u64 	%p3, %rd2, 3;
 	mov.u64 	%rd92, %rd20;
-	@%p3 bra 	$L__BB32_6;
+	@%p3 bra 	$L__BB34_6;
 
 	mov.u64 	%rd88, %rd4;
 	mov.u64 	%rd92, %rd20;
 
-$L__BB32_5:
+$L__BB34_5:
 	ld.u64 	%rd28, [%rd92];
 	ld.u64 	%rd29, [%rd28];
 	ld.u64 	%rd30, [%rd29];
@@ -3751,11 +3819,11 @@ $L__BB32_5:
 	ld.u64 	%rd92, [%rd58];
 	add.s64 	%rd88, %rd88, 4;
 	setp.ne.s64 	%p4, %rd88, 0;
-	@%p4 bra 	$L__BB32_5;
+	@%p4 bra 	$L__BB34_5;
 
-$L__BB32_6:
+$L__BB34_6:
 	setp.eq.s64 	%p5, %rd3, 0;
-	@%p5 bra 	$L__BB32_10;
+	@%p5 bra 	$L__BB34_10;
 
 	setp.eq.s64 	%p6, %rd3, 1;
 	ld.u64 	%rd59, [%rd92];
@@ -3766,7 +3834,7 @@ $L__BB32_6:
 	ld.u64 	%rd64, [%rd63];
 	ld.u64 	%rd65, [%rd64];
 	ld.u64 	%rd92, [%rd65];
-	@%p6 bra 	$L__BB32_10;
+	@%p6 bra 	$L__BB34_10;
 
 	setp.eq.s64 	%p7, %rd3, 2;
 	ld.u64 	%rd66, [%rd92];
@@ -3777,7 +3845,7 @@ $L__BB32_6:
 	ld.u64 	%rd71, [%rd70];
 	ld.u64 	%rd72, [%rd71];
 	ld.u64 	%rd92, [%rd72];
-	@%p7 bra 	$L__BB32_10;
+	@%p7 bra 	$L__BB34_10;
 
 	ld.u64 	%rd73, [%rd92];
 	ld.u64 	%rd74, [%rd73];
@@ -3788,7 +3856,7 @@ $L__BB32_6:
 	ld.u64 	%rd79, [%rd78];
 	ld.u64 	%rd92, [%rd79];
 
-$L__BB32_10:
+$L__BB34_10:
 	// begin inline asm
 	mov.u64 	%rd80, %clock64;
 	// end inline asm
@@ -3798,7 +3866,7 @@ $L__BB32_10:
 	add.s64 	%rd83, %rd6, %rd82;
 	st.global.f64 	[%rd83], %fd1;
 	setp.lt.s32 	%p8, %r1, 2;
-	@%p8 bra 	$L__BB32_12;
+	@%p8 bra 	$L__BB34_12;
 
 	ld.u8 	%r5, [%rd92];
 	st.local.u32 	[%rd5], %r5;
@@ -3820,12 +3888,12 @@ $L__BB32_10:
 	ld.param.b32 	%r6, [retval0+0];
 	} // callseq 5
 
-$L__BB32_12:
+$L__BB34_12:
 	add.s64 	%rd87, %rd87, 1;
 	setp.lt.u64 	%p9, %rd87, %rd22;
-	@%p9 bra 	$L__BB32_2;
+	@%p9 bra 	$L__BB34_2;
 
-$L__BB32_13:
+$L__BB34_13:
 	ret;
 
 }
@@ -3837,7 +3905,7 @@ $L__BB32_13:
 	.param .u64 _Z20latency_write_kernelPhmmPd_param_3
 )
 {
-	.local .align 8 .b8 	__local_depot33[8];
+	.local .align 8 .b8 	__local_depot35[8];
 	.reg .b64 	%SP;
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<10>;
@@ -3846,14 +3914,14 @@ $L__BB32_13:
 	.reg .b64 	%rd<98>;
 
 
-	mov.u64 	%SPL, __local_depot33;
+	mov.u64 	%SPL, __local_depot35;
 	cvta.local.u64 	%SP, %SPL;
 	ld.param.u64 	%rd22, [_Z20latency_write_kernelPhmmPd_param_0];
 	ld.param.u64 	%rd23, [_Z20latency_write_kernelPhmmPd_param_1];
 	ld.param.u64 	%rd24, [_Z20latency_write_kernelPhmmPd_param_2];
 	ld.param.u64 	%rd25, [_Z20latency_write_kernelPhmmPd_param_3];
 	setp.eq.s64 	%p1, %rd24, 0;
-	@%p1 bra 	$L__BB33_13;
+	@%p1 bra 	$L__BB35_13;
 
 	shr.u64 	%rd1, %rd23, 3;
 	add.s64 	%rd2, %rd1, -1;
@@ -3866,22 +3934,22 @@ $L__BB32_13:
 	cvta.to.global.u64 	%rd6, %rd25;
 	mov.u64 	%rd92, 0;
 
-$L__BB33_2:
+$L__BB35_2:
 	// begin inline asm
 	mov.u64 	%rd28, %clock64;
 	// end inline asm
 	setp.eq.s64 	%p2, %rd1, 0;
 	mov.u64 	%rd97, %rd22;
-	@%p2 bra 	$L__BB33_10;
+	@%p2 bra 	$L__BB35_10;
 
 	setp.lt.u64 	%p3, %rd2, 3;
 	mov.u64 	%rd97, %rd22;
-	@%p3 bra 	$L__BB33_6;
+	@%p3 bra 	$L__BB35_6;
 
 	mov.u64 	%rd97, %rd22;
 	mov.u64 	%rd94, %rd4;
 
-$L__BB33_5:
+$L__BB35_5:
 	ld.u64 	%rd30, [%rd97];
 	st.u64 	[%rd30+8], %rd24;
 	ld.u64 	%rd31, [%rd30];
@@ -3948,11 +4016,11 @@ $L__BB33_5:
 	st.u64 	[%rd97+8], %rd24;
 	add.s64 	%rd94, %rd94, -4;
 	setp.ne.s64 	%p4, %rd94, 0;
-	@%p4 bra 	$L__BB33_5;
+	@%p4 bra 	$L__BB35_5;
 
-$L__BB33_6:
+$L__BB35_6:
 	setp.eq.s64 	%p5, %rd3, 0;
-	@%p5 bra 	$L__BB33_10;
+	@%p5 bra 	$L__BB35_10;
 
 	setp.eq.s64 	%p6, %rd3, 1;
 	ld.u64 	%rd61, [%rd97];
@@ -3971,7 +4039,7 @@ $L__BB33_6:
 	st.u64 	[%rd67+8], %rd24;
 	ld.u64 	%rd97, [%rd67];
 	st.u64 	[%rd97+8], %rd24;
-	@%p6 bra 	$L__BB33_10;
+	@%p6 bra 	$L__BB35_10;
 
 	setp.eq.s64 	%p7, %rd3, 2;
 	ld.u64 	%rd68, [%rd97];
@@ -3990,7 +4058,7 @@ $L__BB33_6:
 	st.u64 	[%rd74+8], %rd24;
 	ld.u64 	%rd97, [%rd74];
 	st.u64 	[%rd97+8], %rd24;
-	@%p7 bra 	$L__BB33_10;
+	@%p7 bra 	$L__BB35_10;
 
 	ld.u64 	%rd75, [%rd97];
 	st.u64 	[%rd75+8], %rd24;
@@ -4009,7 +4077,7 @@ $L__BB33_6:
 	ld.u64 	%rd97, [%rd81];
 	st.u64 	[%rd97+8], %rd24;
 
-$L__BB33_10:
+$L__BB35_10:
 	// begin inline asm
 	mov.u64 	%rd82, %clock64;
 	// end inline asm
@@ -4019,7 +4087,7 @@ $L__BB33_10:
 	add.s64 	%rd85, %rd6, %rd84;
 	st.global.f64 	[%rd85], %fd1;
 	setp.lt.s32 	%p8, %r1, 2;
-	@%p8 bra 	$L__BB33_12;
+	@%p8 bra 	$L__BB35_12;
 
 	add.u64 	%rd91, %SP, 0;
 	add.u64 	%rd90, %SP, 0;
@@ -4044,12 +4112,12 @@ $L__BB33_10:
 	ld.param.b32 	%r6, [retval0+0];
 	} // callseq 6
 
-$L__BB33_12:
+$L__BB35_12:
 	add.s64 	%rd92, %rd92, 1;
 	setp.lt.u64 	%p9, %rd92, %rd24;
-	@%p9 bra 	$L__BB33_2;
+	@%p9 bra 	$L__BB35_2;
 
-$L__BB33_13:
+$L__BB35_13:
 	ret;
 
 }
@@ -4070,7 +4138,7 @@ $L__BB33_13:
 	add.s32 	%r16, %r8, %r9;
 	mov.u32 	%r15, 0;
 
-$L__BB34_1:
+$L__BB36_1:
 	mul.wide.s32 	%rd130, %r16, 8;
 	add.s64 	%rd3, %rd1, %rd130;
 	// begin inline asm
@@ -4332,20 +4400,20 @@ $L__BB34_1:
 	add.s32 	%r16, %r16, %r10;
 	add.s32 	%r15, %r15, 1;
 	setp.ne.s32 	%p1, %r15, 8192;
-	@%p1 bra 	$L__BB34_1;
+	@%p1 bra 	$L__BB36_1;
 
 	mov.u32 	%r14, %ctaid.x;
 	mov.u32 	%r13, %tid.x;
 	shl.b32 	%r12, %r14, 10;
 	add.s32 	%r11, %r12, %r13;
 	setp.eq.s32 	%p2, %r16, %r11;
-	@%p2 bra 	$L__BB34_4;
+	@%p2 bra 	$L__BB36_4;
 
 	cvta.to.global.u64 	%rd131, %rd1;
 	cvt.s64.s32 	%rd132, %r16;
 	st.global.u64 	[%rd131], %rd132;
 
-$L__BB34_4:
+$L__BB36_4:
 	ret;
 
 }
@@ -4361,7 +4429,7 @@ $L__BB34_4:
 	.param .u64 _Z29device_read_kernel_sync_sweepPdS_mmmmPlS0__param_7
 )
 {
-	.local .align 8 .b8 	__local_depot35[8];
+	.local .align 8 .b8 	__local_depot37[8];
 	.reg .b64 	%SP;
 	.reg .b64 	%SPL;
 	.reg .pred 	%p<25>;
@@ -4370,7 +4438,7 @@ $L__BB34_4:
 	// demoted variable
 	.shared .align 8 .b8 _ZZ29device_read_kernel_sync_sweepPdS_mmmmPlS0_E6clocks[8192];
 
-	mov.u64 	%SPL, __local_depot35;
+	mov.u64 	%SPL, __local_depot37;
 	cvta.local.u64 	%SP, %SPL;
 	ld.param.u64 	%rd38, [_Z29device_read_kernel_sync_sweepPdS_mmmmPlS0__param_0];
 	ld.param.u64 	%rd39, [_Z29device_read_kernel_sync_sweepPdS_mmmmPlS0__param_1];
@@ -4403,7 +4471,7 @@ $L__BB34_4:
 	bfi.b64 	%rd5, %rd52, %rd51, 32, 32;
 	selp.b64 	%rd6, %rd44, %rd45, %p1;
 	setp.eq.s64 	%p2, %rd41, 0;
-	@%p2 bra 	$L__BB35_33;
+	@%p2 bra 	$L__BB37_33;
 
 	cvt.u32.u64 	%r15, %rd3;
 	add.s64 	%rd7, %rd5, 4;
@@ -4443,78 +4511,78 @@ $L__BB34_4:
 	cvta.to.global.u64 	%rd13, %rd42;
 	mov.u64 	%rd96, 0;
 
-$L__BB35_2:
+$L__BB37_2:
 	setp.ne.s64 	%p4, %rd5, 0;
-	@%p4 bra 	$L__BB35_4;
+	@%p4 bra 	$L__BB37_4;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB35_4:
+$L__BB37_4:
 	setp.ne.s32 	%p5, %r2, %r3;
 	barrier.sync 	0;
-	@%p5 bra 	$L__BB35_7;
+	@%p5 bra 	$L__BB37_7;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r33,[%rd7],%r4;
 	// end inline asm
 
-$L__BB35_6:
+$L__BB37_6:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r35,[%rd7];
 	// end inline asm
 	xor.b32  	%r36, %r35, %r33;
 	setp.gt.s32 	%p6, %r36, -1;
-	@%p6 bra 	$L__BB35_6;
+	@%p6 bra 	$L__BB37_6;
 
-$L__BB35_7:
+$L__BB37_7:
 	barrier.sync 	0;
 	// begin inline asm
 	mov.u64 %rd62, %globaltimer;
 	// end inline asm
 	add.s64 	%rd63, %rd62, 1000000;
 	st.global.u64 	[%rd1], %rd63;
-	@%p4 bra 	$L__BB35_9;
+	@%p4 bra 	$L__BB37_9;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB35_9:
+$L__BB37_9:
 	barrier.sync 	0;
-	@%p5 bra 	$L__BB35_12;
+	@%p5 bra 	$L__BB37_12;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r37,[%rd7],%r4;
 	// end inline asm
 
-$L__BB35_11:
+$L__BB37_11:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r39,[%rd7];
 	// end inline asm
 	xor.b32  	%r40, %r39, %r37;
 	setp.gt.s32 	%p9, %r40, -1;
-	@%p9 bra 	$L__BB35_11;
+	@%p9 bra 	$L__BB37_11;
 
-$L__BB35_12:
+$L__BB37_12:
 	barrier.sync 	0;
 	bar.sync 	0;
 	ld.global.u64 	%rd16, [%rd1];
 
-$L__BB35_13:
+$L__BB37_13:
 	// begin inline asm
 	mov.u64 %rd66, %globaltimer;
 	// end inline asm
 	setp.lt.s64 	%p10, %rd66, %rd16;
-	@%p10 bra 	$L__BB35_13;
+	@%p10 bra 	$L__BB37_13;
 
 	setp.ge.u64 	%p11, %rd4, %rd6;
-	@%p11 bra 	$L__BB35_17;
+	@%p11 bra 	$L__BB37_17;
 
 	mov.u64 	%rd98, %rd4;
 
-$L__BB35_16:
+$L__BB37_16:
 	shl.b64 	%rd69, %rd98, 3;
 	add.s64 	%rd68, %rd12, %rd69;
 	// begin inline asm
@@ -4523,53 +4591,53 @@ $L__BB35_16:
 	xor.b64  	%rd100, %rd67, %rd100;
 	add.s64 	%rd98, %rd98, %rd11;
 	setp.lt.u64 	%p12, %rd98, %rd6;
-	@%p12 bra 	$L__BB35_16;
+	@%p12 bra 	$L__BB37_16;
 
-$L__BB35_17:
+$L__BB37_17:
 	// begin inline asm
 	mov.u64 %rd70, %globaltimer;
 	// end inline asm
 	sub.s64 	%rd71, %rd70, %rd16;
 	st.shared.u64 	[%r5], %rd71;
-	@%p4 bra 	$L__BB35_19;
+	@%p4 bra 	$L__BB37_19;
 
 	// begin inline asm
 	trap;
 	// end inline asm
 
-$L__BB35_19:
+$L__BB37_19:
 	barrier.sync 	0;
-	@%p5 bra 	$L__BB35_22;
+	@%p5 bra 	$L__BB37_22;
 
 	// begin inline asm
 	atom.add.release.gpu.u32 %r41,[%rd7],%r4;
 	// end inline asm
 
-$L__BB35_21:
+$L__BB37_21:
 	// begin inline asm
 	ld.acquire.gpu.u32 %r43,[%rd7];
 	// end inline asm
 	xor.b32  	%r44, %r43, %r41;
 	setp.gt.s32 	%p15, %r44, -1;
-	@%p15 bra 	$L__BB35_21;
+	@%p15 bra 	$L__BB37_21;
 
-$L__BB35_22:
+$L__BB37_22:
 	setp.ne.s32 	%p16, %r1, 0;
 	barrier.sync 	0;
-	@%p16 bra 	$L__BB35_32;
+	@%p16 bra 	$L__BB37_32;
 
 	setp.lt.u32 	%p17, %r15, 2;
 	ld.shared.u64 	%rd107, [_ZZ29device_read_kernel_sync_sweepPdS_mmmmPlS0_E6clocks];
-	@%p17 bra 	$L__BB35_31;
+	@%p17 bra 	$L__BB37_31;
 
 	setp.lt.u64 	%p18, %rd9, 3;
 	mov.u64 	%rd105, 1;
-	@%p18 bra 	$L__BB35_27;
+	@%p18 bra 	$L__BB37_27;
 
 	mov.u64 	%rd105, 1;
 	mov.u64 	%rd103, %rd10;
 
-$L__BB35_26:
+$L__BB37_26:
 	cvt.u32.u64 	%r46, %rd105;
 	shl.b32 	%r47, %r46, 3;
 	add.s32 	%r49, %r31, %r47;
@@ -4584,11 +4652,11 @@ $L__BB35_26:
 	add.s64 	%rd105, %rd105, 4;
 	add.s64 	%rd103, %rd103, -4;
 	setp.ne.s64 	%p19, %rd103, 0;
-	@%p19 bra 	$L__BB35_26;
+	@%p19 bra 	$L__BB37_26;
 
-$L__BB35_27:
+$L__BB37_27:
 	setp.eq.s32 	%p20, %r6, 0;
-	@%p20 bra 	$L__BB35_31;
+	@%p20 bra 	$L__BB37_31;
 
 	setp.eq.s32 	%p21, %r6, 1;
 	cvt.u32.u64 	%r50, %rd105;
@@ -4596,32 +4664,32 @@ $L__BB35_27:
 	add.s32 	%r10, %r31, %r51;
 	ld.shared.u64 	%rd84, [%r10];
 	max.s64 	%rd107, %rd107, %rd84;
-	@%p21 bra 	$L__BB35_31;
+	@%p21 bra 	$L__BB37_31;
 
 	setp.eq.s32 	%p22, %r6, 2;
 	ld.shared.u64 	%rd85, [%r10+8];
 	max.s64 	%rd107, %rd107, %rd85;
-	@%p22 bra 	$L__BB35_31;
+	@%p22 bra 	$L__BB37_31;
 
 	ld.shared.u64 	%rd86, [%r10+16];
 	max.s64 	%rd107, %rd107, %rd86;
 
-$L__BB35_31:
+$L__BB37_31:
 	mul.lo.s64 	%rd87, %rd96, %rd8;
 	add.s64 	%rd88, %rd87, %rd2;
 	shl.b64 	%rd89, %rd88, 3;
 	add.s64 	%rd90, %rd13, %rd89;
 	st.global.u64 	[%rd90], %rd107;
 
-$L__BB35_32:
+$L__BB37_32:
 	add.s64 	%rd96, %rd96, 1;
 	setp.lt.u64 	%p23, %rd96, %rd41;
-	@%p23 bra 	$L__BB35_2;
+	@%p23 bra 	$L__BB37_2;
 
-$L__BB35_33:
+$L__BB37_33:
 	ld.global.u64 	%rd91, [%rd1];
 	setp.ne.s64 	%p24, %rd91, 0;
-	@%p24 bra 	$L__BB35_35;
+	@%p24 bra 	$L__BB37_35;
 
 	add.u64 	%rd92, %SP, 0;
 	add.u64 	%rd93, %SPL, 0;
@@ -4644,7 +4712,7 @@ $L__BB35_33:
 	ld.param.b32 	%r53, [retval0+0];
 	} // callseq 7
 
-$L__BB35_35:
+$L__BB37_35:
 	ret;
 
 }
@@ -4670,14 +4738,14 @@ $L__BB35_35:
 	mad.lo.s32 	%r9, %r6, %r1, %r7;
 	cvt.u64.u32 	%rd12, %r9;
 	setp.ge.u64 	%p1, %rd12, %rd8;
-	@%p1 bra 	$L__BB36_3;
+	@%p1 bra 	$L__BB38_3;
 
 	mov.u32 	%r8, %nctaid.x;
 	mul.lo.s32 	%r3, %r1, %r8;
 	cvta.to.global.u64 	%rd2, %rd7;
 	cvta.to.global.u64 	%rd3, %rd6;
 
-$L__BB36_2:
+$L__BB38_2:
 	shl.b64 	%rd9, %rd12, 3;
 	add.s64 	%rd10, %rd2, %rd9;
 	ld.global.f64 	%fd1, [%rd10];
@@ -4686,9 +4754,9 @@ $L__BB36_2:
 	add.s32 	%r9, %r9, %r3;
 	cvt.u64.u32 	%rd12, %r9;
 	setp.lt.u64 	%p2, %rd12, %rd8;
-	@%p2 bra 	$L__BB36_2;
+	@%p2 bra 	$L__BB38_2;
 
-$L__BB36_3:
+$L__BB38_3:
 	ret;
 
 }

@@ -70,7 +70,6 @@ __global__ void device_pong_kernel_volatile(volatile uint8_t *flag) {
 }
 
 __global__ void device_ping_kernel_volatile(volatile uint8_t *flag, clock_t *time) {
-    uint8_t expected = FLAG_A;
     while (*flag == FLAG_B);
 
     clock_t start = clock();

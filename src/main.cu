@@ -167,6 +167,7 @@ int main() {
     cudaGetDeviceCount(&device_count);
 
     printf("[INFO] %d devices found\n", device_count);
+    printf("[INFO] num threads: %lu\n", NUM_THREADS);
     printf("[INFO] cache fill buffer size: %lu\n", cache_filler);
     printf("[INFO] system page size: %lu (using %lu)\n", sysconf(_SC_PAGESIZE), PAGE_SIZE);
     std::cout << std::endl;
@@ -190,7 +191,7 @@ int main() {
     // sleep_test();
 
     // run_ping_pong_benchmarks<HOST_MEM>(100);
-    // run_ping_pong_benchmarks<DEVICE_MEM>(100);
+    run_ping_pong_benchmarks<DEVICE_MEM>(100);
 
     init_thread_array();
 
@@ -281,17 +282,17 @@ int main() {
         // run_memcpy_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_cuda_memcpy_tests(10, i, "", std::to_string(i));
     }
-    // run_read_tests_device(10, 1UL << 32, 264, "", std::to_string(1UL << 32));
-    // run_write_tests_device(10, 1UL << 32, 264, "", std::to_string(1UL << 32));
+    // run_read_tests_device(100, 1UL << 33, 264, "", std::to_string(1UL << 33));
+    // run_write_tests_device(100, 1UL << 33, 264, "", std::to_string(1UL << 33));
     // run_copy_tests_device(10, 1UL << 32, 264, "", std::to_string(1UL << 32));
-    // run_read_tests_device(10, 1UL << 32, 0, "", std::to_string(1UL << 32));
-    // run_write_tests_device(10, 1UL << 32, 0, "", std::to_string(1UL << 32));
+    // run_read_tests_device(2, 1UL << 33, 1, "block/", std::to_string(1UL << 33));
+    // run_write_tests_device(2, 1UL << 33, 1, "block/", std::to_string(1UL << 33));
     // run_copy_tests_device(10, 1UL << 32, 0, "", std::to_string(1UL << 32));
-    // run_read_tests_host(10, 1UL << 32, 1, "single/", std::to_string(1UL << 32));
-    // run_write_tests_host(10, 1UL << 32, 1, "single/", std::to_string(1UL << 32));
+    // run_read_tests_host(100, 1UL << 33, 1, "single/", std::to_string(1UL << 33));
+    // run_write_tests_host(100, 1UL << 33, 1, "single/", std::to_string(1UL << 33));
     // run_copy_tests_host(10, 1UL << 32, 1, "single/", std::to_string(1UL << 32));
-    // run_read_tests_host(10, 1UL << 32, 72, "", std::to_string(1UL << 32));
-    // run_write_tests_host(10, 1UL << 32, 72, "", std::to_string(1UL << 32));
+    // run_read_tests_host(100, 1UL << 33, 72, "", std::to_string(1UL << 33));
+    // run_write_tests_host(100, 1UL << 33, 72, "", std::to_string(1UL << 33));
     // run_copy_tests_host(10, 1UL << 32, 72, "", std::to_string(1UL << 32));
     // run_copy_tests_host(10, 1UL << 32, 1, "", std::to_string(1UL << 32));
     // run_stream_benchmark_host(5, 1UL << 32);
@@ -316,8 +317,8 @@ int main() {
     //     run_read_tests_device(10, i, 1, "", std::to_string(i));
     // }
 
-    run_latency_test_host<true>(100, 1UL << 32); std::cout << "done" << std::endl;
-    run_latency_test_device<true>(100, 1UL << 32); std::cout << "done" << std::endl;
+    // run_latency_test_host<true>(100, 1UL << 32); std::cout << "done" << std::endl;
+    // run_latency_test_device<true>(100, 1UL << 32); std::cout << "done" << std::endl;
     // run_latency_test_host<false>(100, 1UL << 32); std::cout << "done" << std::endl;
     // run_latency_test_device<false>(100, 1UL << 32); std::cout << "done" << std::endl;
 
@@ -345,23 +346,21 @@ int main() {
         // latency_test_host_template<false, true, REMOTE_DEVICE_MEM>(10, i, "results/latency/host/scalability/write/hbm_remote/" + std::to_string(i));
     }
 
-    // // ------------- HOST SCALABILITY -------------
-    // for (size_t n_threads = 1; n_threads <= 64; ++n_threads) {
-    //     std::cout << n_threads << std::endl;
-    //     // run_read_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
-    //     // run_write_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
-    //     // run_copy_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
-    //     run_memset_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
-    //     run_memcpy_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
-    // }
+    // ------------- HOST SCALABILITY -------------
+    for (size_t n_threads = 1; n_threads <= 72; ++n_threads) {
+        // std::cout << n_threads << std::endl;
+        // run_read_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
+        // run_write_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
+        // run_copy_tests_host(10, 1UL << 33, n_threads, "scalability/", std::to_string(n_threads));
+    }
 
-    // // // ------------- DEVICE SCALABILITY -------------
-    // for (size_t n_blocks = 80; n_blocks <= 264; ++n_blocks) {
-    //     std::cout << n_blocks << std::endl;
-    //     run_read_tests_device(10, 1UL << 33, n_blocks, "scalability/", std::to_string(n_blocks));
-    //     run_write_tests_device(10, 1UL << 33, n_blocks, "scalability/", std::to_string(n_blocks));
-    // //     run_copy_tests_device(10, 1UL << 33, n_blocks, "scalability/", std::to_string(n_blocks));
-    // }
+    // ------------- DEVICE SCALABILITY -------------
+    for (size_t n_blocks = 1; n_blocks <= 264; ++n_blocks) {
+        // std::cout << n_blocks << std::endl;
+        // run_read_tests_device(10, 1UL << 33, n_blocks, "scalability/", std::to_string(n_blocks));
+        // run_write_tests_device(10, 1UL << 33, n_blocks, "scalability/", std::to_string(n_blocks));
+        // run_copy_tests_device(10, 1UL << 33, n_blocks, "scalability/", std::to_string(n_blocks));
+    }
 
     // // ------------- DEVICE THROUGHPUT -------------
     // for (size_t i = 4096; i <= 1UL << 33; i = (size_t)((double) i * sqrt(sqrt(2)))) {
