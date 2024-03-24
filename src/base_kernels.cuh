@@ -15,21 +15,14 @@ __global__ void stream_copy(T *dst, T *src, size_t size) {
     }
 }
 
-/**
- * these functions are meant to evaluate typical memory access pattern from device
- * memory should be prepared in advance in such a way that makes these kernels meaningful
- */
-
-__global__ void device_modified_init_kernel(uint8_t *out, size_t len) {
-    dumb_copy(out, out, len);
-}
 
 template <typename T, unsigned int STRIDE>
 __global__ void strided_write_kernel(T *out) {
     auto tid = cg::this_grid().thread_rank();
 
-    out[tid * STRIDE] = 0;
+    out[tid * STRIDE] = 0xff;
 }
+
 
 // template <typename T>
 // __global__ void loopy_write_kernel_clock(T *out, size_t size, clock_t *start, clock_t *end) {

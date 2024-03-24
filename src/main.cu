@@ -14,6 +14,8 @@
 //#include "apps.hpp"
 #include "cache.hpp"
 #include "sweep.hpp"
+#include "backforth.cpp"
+#include "pm_counters.hpp"
 
 // void run_launch_overhead_benchmarks() {
 //     for (size_t i = 32; i < 32 << 12; i <<= 1) {
@@ -142,6 +144,15 @@ __attribute__((always_inline)) inline uint64_t get_cyclecount() {
     return value;
 }
 
+void print_power() {
+    pm_counters power;
+    sleep(0.1);
+    power.start();
+    sleep(1);
+    power.stop();
+    power.print_result();
+}
+
 int main() {
 #ifndef OPENBLAS
     int main_thread = 287; // 287
@@ -159,10 +170,10 @@ int main() {
         std::cerr << "Setting CPU affinity failed!" << std::endl;
         exit(-1);
     } else {
-        std::cout << "[INFO] thread pinning works" << std::endl;
+        std::cout << "[INFO] thread pinning works: CORE " << main_thread << std::endl;
     }
 #endif
-
+    // nid002288
     int device_count = 0;
     cudaGetDeviceCount(&device_count);
 
@@ -191,9 +202,34 @@ int main() {
     // sleep_test();
 
     // run_ping_pong_benchmarks<HOST_MEM>(100);
-    run_ping_pong_benchmarks<DEVICE_MEM>(100);
+    // run_ping_pong_benchmarks<DEVICE_MEM>(100);
 
-    init_thread_array();
+    // run_cuda_memcpy_heatmap_tests();
+
+    // for (size_t i = 1; i <= 2048; i *= 2) {
+    //     std::cout << i << std::endl;
+    //     run_backforth_tests<true>(10, 1UL << 30, i);
+    // }
+
+    print_power();
+
+    // init_thread_array(main_thread);
+
+    std::string base = "/noisy/";
+
+    // size_t noise_bytes = CEIL(1UL << 33, 64 * 72) * 64 * 72;
+    // DEVICE_MEM infinite(noise_bytes);
+    // run_test(INFINITE_READ, 72, 0, infinite.data, nullptr, (noise_bytes) / sizeof(double), nullptr, true);
+
+    size_t noise_bytes = 1UL << 33;
+    HOST_MEM infinite(noise_bytes);
+    clock_t dummy = 0;
+    infinite_device_read_kernel<<<1024, 264>>>((ulonglong2 *)infinite.data, noise_bytes / sizeof(double), &dummy);
+    printf("NOISE STARTED!\n");
+
+    print_power();
+
+    return;
 
     // for (size_t n_threads = 5; n_threads <= 70; n_threads += 5) {
     //     for (double ratio = 0.1; ratio <= 0.95; ratio += 0.1) {
@@ -234,23 +270,17 @@ int main() {
 
     // test_cache();
 
-    // run_cuda_memcpy_heatmap_tests();
     // run_device_copy_heatmap_tests();
     // run_host_copy_heatmap_tests();
+
+    // nid002288
 
     // run_stream_benchmark_device(1UL << 32, 5, 1);
     for (size_t i = 4096; i <= 1UL << 33; i = (size_t)((double) i * sqrt(2))) {
         i = CEIL(i, 64 * 72) * 64 * 72;
         // std::cout << i << std::endl;
-        // run_thrust_reduction_benchmarks(10, i);
-        // run_read_tests_device(10, i, 264, "", std::to_string(i));
-        // run_write_tests_device(10, i, 264, "", std::to_string(i));
-        // run_copy_tests_device(10, i, 264, "", std::to_string(i));
         // run_read_tests_host(10, i, 72, "", std::to_string(i));
         // run_write_tests_host(10, i, 72, "", std::to_string(i));
-        // run_read_tests_device(10, i, 0, "", std::to_string(i));
-        // run_write_tests_device(10, i, 0, "", std::to_string(i));
-        // run_copy_tests_device(10, i, 0, "", std::to_string(i));
         // run_read_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_write_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_copy_tests_host(10, i, 1, "single/", std::to_string(i));
@@ -258,42 +288,36 @@ int main() {
         // run_memcpy_tests_host(10, i, 72, "", std::to_string(i));
         // run_memset_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_memcpy_tests_host(10, i, 1, "single/", std::to_string(i));
-        // run_cuda_memcpy_tests(10, i, "", std::to_string(i));
     }
 
     for (size_t i = 4096; i <= 1UL << 33; i = (size_t)((double) i * sqrt(2))) {
         i = CEIL(i, 64) * 64;
         // std::cout << i << std::endl;
         // run_thrust_reduction_benchmarks(10, i);
+        // run_read_tests_device(10, i, 264, base, std::to_string(i));
+        // run_write_tests_device(10, i, 264, base, std::to_string(i));
+        // run_copy_tests_device(10, i, 264, base, std::to_string(i));
+        // run_thrust_reduction_benchmarks(10, i);
         // run_read_tests_device(10, i, 264, "", std::to_string(i));
         // run_write_tests_device(10, i, 264, "", std::to_string(i));
         // run_copy_tests_device(10, i, 264, "", std::to_string(i));
-        // run_read_tests_host(10, i, 72, "", std::to_string(i));
-        // run_write_tests_host(10, i, 72, "", std::to_string(i));
         // run_read_tests_device(10, i, 0, "", std::to_string(i));
         // run_write_tests_device(10, i, 0, "", std::to_string(i));
         // run_copy_tests_device(10, i, 0, "", std::to_string(i));
-        // run_read_tests_host(10, i, 1, "single/", std::to_string(i));
-        // run_write_tests_host(10, i, 1, "single/", std::to_string(i));
-        // run_copy_tests_host(10, i, 1, "single/", std::to_string(i));
-        // run_memset_tests_host(10, i, 72, "", std::to_string(i));
-        // run_memcpy_tests_host(10, i, 72, "", std::to_string(i));
-        // run_memset_tests_host(10, i, 1, "single/", std::to_string(i));
-        // run_memcpy_tests_host(10, i, 1, "single/", std::to_string(i));
         // run_cuda_memcpy_tests(10, i, "", std::to_string(i));
     }
-    // run_read_tests_device(100, 1UL << 33, 264, "", std::to_string(1UL << 33));
-    // run_write_tests_device(100, 1UL << 33, 264, "", std::to_string(1UL << 33));
-    // run_copy_tests_device(10, 1UL << 32, 264, "", std::to_string(1UL << 32));
+    // run_read_tests_device(100, 1UL << 33, 264, base, std::to_string(1UL << 33));
+    // run_write_tests_device(100, 1UL << 33, 264, base, std::to_string(1UL << 33));
+    // run_copy_tests_device(10, 1UL << 32, 264, base, std::to_string(1UL << 32));
     // run_read_tests_device(2, 1UL << 33, 1, "block/", std::to_string(1UL << 33));
     // run_write_tests_device(2, 1UL << 33, 1, "block/", std::to_string(1UL << 33));
     // run_copy_tests_device(10, 1UL << 32, 0, "", std::to_string(1UL << 32));
     // run_read_tests_host(100, 1UL << 33, 1, "single/", std::to_string(1UL << 33));
     // run_write_tests_host(100, 1UL << 33, 1, "single/", std::to_string(1UL << 33));
     // run_copy_tests_host(10, 1UL << 32, 1, "single/", std::to_string(1UL << 32));
-    // run_read_tests_host(100, 1UL << 33, 72, "", std::to_string(1UL << 33));
-    // run_write_tests_host(100, 1UL << 33, 72, "", std::to_string(1UL << 33));
-    // run_copy_tests_host(10, 1UL << 32, 72, "", std::to_string(1UL << 32));
+    // run_read_tests_host(100, 1UL << 33, 72, base, std::to_string(1UL << 33));
+    // run_write_tests_host(100, 1UL << 33, 72, base, std::to_string(1UL << 33));
+    // run_copy_tests_host(10, 1UL << 32, 72, base, std::to_string(1UL << 32));
     // run_copy_tests_host(10, 1UL << 32, 1, "", std::to_string(1UL << 32));
     // run_stream_benchmark_host(5, 1UL << 32);
     // run_memset_tests_host(10, 1UL << 32, 72, "", std::to_string(1UL << 32));
@@ -317,9 +341,7 @@ int main() {
     //     run_read_tests_device(10, i, 1, "", std::to_string(i));
     // }
 
-    // run_latency_test_host<true>(100, 1UL << 32); std::cout << "done" << std::endl;
-    // run_latency_test_device<true>(100, 1UL << 32); std::cout << "done" << std::endl;
-    // run_latency_test_host<false>(100, 1UL << 32); std::cout << "done" << std::endl;
+    // run_latency_test_host<false>(2, 1UL << 34); std::cout << "done" << std::endl;
     // run_latency_test_device<false>(100, 1UL << 32); std::cout << "done" << std::endl;
 
     // ------------- LATENCY -------------

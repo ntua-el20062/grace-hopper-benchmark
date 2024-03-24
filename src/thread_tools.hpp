@@ -4,6 +4,7 @@
 #include <iostream>
 #include "base_kernels.cuh"
 #include "measurement.hpp"
+#include "constants.hpp"
 
 #define NUM_THREADS 72
 
@@ -12,14 +13,11 @@ constexpr size_t DEVICE_ID = (size_t) -1;
 constexpr size_t REMOTE_DEVICE_ID = (size_t) -2;
 
 class SpinLock {
-    std::atomic_flag locked = ATOMIC_FLAG_INIT;
+    std::atomic_flag locked;
 public:
-    void lock() {
-        while (locked.test_and_set(std::memory_order_acquire)) {}
-    }
-    void unlock() {
-        locked.clear(std::memory_order_release);
-    }
+    SpinLock();
+    void lock();
+    void unlock();
 };
 
 double latency_function(uint8_t *in, size_t n_elem) {    
@@ -79,6 +77,7 @@ enum ThreadCommand {
     CLOCK_TEST,
     LATENCY_TEST,
     LATENCY_WRITE_TEST,
+    INFINITE_READ,
     TERMINATE
 };
 
@@ -185,7 +184,7 @@ void dispatch_command(size_t t_id, ThreadCommand command, uint8_t *buffer, size_
     }
 }
 
-uint64_t run_test(ThreadCommand test, size_t n_threads, size_t initial_thread, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems, uint64_t *end_times) {
+uint64_t run_test(ThreadCommand test, size_t n_threads, size_t initial_thread, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems, uint64_t *end_times, bool skip_waiting=false) {
     assert(n_threads + initial_thread <= NUM_THREADS);
     size_t n_cachelines = n_elems / 8; // 8 doubles per cacheline
     size_t per_thread_n_cachelines = n_cachelines / n_threads;
@@ -209,11 +208,13 @@ uint64_t run_test(ThreadCommand test, size_t n_threads, size_t initial_thread, u
         cur->tx_mutex.unlock(); // send command
     }
 
-    for (size_t i = 0; i < n_threads; ++i) {
-        thread_data *cur = &thread_array[i+initial_thread];
-        cur->rx_mutex.lock(); // wait until thread is done
-        cur->rx_mutex.unlock();
-        end_times[i] = cur->end_time;
+    if (!skip_waiting) {
+        for (size_t i = 0; i < n_threads; ++i) {
+            thread_data *cur = &thread_array[i+initial_thread];
+            cur->rx_mutex.lock(); // wait until thread is done
+            cur->rx_mutex.unlock();
+            end_times[i] = cur->end_time;
+        }
     }
 
     return nominal_start_time;
@@ -279,6 +280,18 @@ uint64_t thread_read_function(uint64_t start_time, double *a, size_t n_elems) {
                     "ldp x0, x1, [%0, #64]!;" :: "r" (a) : "x0", "x1");
     }
     return get_cpu_clock();
+}
+
+void infinite_thread_read_function(double *a, size_t n_elems) {
+    while (true) {
+        for (size_t i = 0; i < n_elems; i += 8) {
+            asm volatile("ldp x0, x1, [%0, 0];"
+                        "ldp x0, x1, [%0, #16];"
+
+                        "ldp x0, x1, [%0, #32];"
+                        "ldp x0, x1, [%0, #48];" :: "r" (&a[i]) : "x0", "x1");
+        }
+    }
 }
 
 uint64_t thread_copy_function(uint64_t start_time, double *a, double *b, size_t n_elems) {
@@ -359,12 +372,16 @@ void thread_function(thread_data *t_info) {
                 }
                 break;
             }
+            case INFINITE_READ:
+                infinite_thread_read_function((double *) t_info->buffer, t_info->size);
+                break;
         }
         t_info->rx_mutex.unlock(); // signal completion
     }
 }
 
-void init_thread_array() {
+void init_thread_array(int main_thread) {
+    assert(main_thread >= NUM_THREADS);
     for (size_t i = 0; i < NUM_THREADS; ++i) {
         thread_data *cur = &thread_array[i];
         cur->t_id = i;
@@ -383,6 +400,8 @@ void init_thread_array() {
 }
 
 void terminate_threads() {
+    printf("terminating...\n");
+    fflush(stdout);
     for (size_t i = 0; i < NUM_THREADS; ++i) {
         thread_data *cur = &thread_array[i];
 

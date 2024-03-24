@@ -30,6 +30,8 @@ constexpr int BLOCK_SIZE = 256;
 SpinLock affinity_mutex;
 
 struct ManagedMemoryDataFactory {
+    static constexpr bool is_gpu = true;
+    static constexpr int gpu_id = 0;
     uint8_t *data = nullptr;
 
     ManagedMemoryDataFactory(size_t size) {
@@ -94,6 +96,7 @@ void initialize_memory_page_chase(uint8_t *data, size_t size) {
 }
 
 struct MallocDataFactory {
+    static constexpr bool is_gpu = false;
     uint8_t *data = nullptr;
 
     MallocDataFactory(size_t size) {
@@ -123,6 +126,8 @@ struct MmapDataFactory {
 
 template <int NODE>
 struct NumaDataFactory {
+    static constexpr bool is_gpu = NODE == 4 || NODE == 12 || NODE == 20 || NODE == 28;
+    static constexpr int gpu_id = (NODE-4)/8;
     uint8_t *data = nullptr;
     size_t size = 0;
 
@@ -165,10 +170,13 @@ struct MmioDataFactory {
 };
 
 struct CudaMallocDataFactory {
+    static constexpr bool is_gpu = true;
+    static constexpr int gpu_id = 0;
     uint8_t *data = nullptr;
 
     CudaMallocDataFactory(size_t size) {
         cudaMalloc(&data, size);
+        cudaMemset(data, 0xff, size);
     }
 
     ~CudaMallocDataFactory() {
@@ -177,6 +185,8 @@ struct CudaMallocDataFactory {
 };
 
 struct RemoteCudaMallocDataFactory {
+    static constexpr bool is_gpu = true;
+    static constexpr int gpu_id = 1;
     uint8_t *data = nullptr;
 
     RemoteCudaMallocDataFactory(size_t size) {
@@ -194,6 +204,7 @@ struct RemoteCudaMallocDataFactory {
 };
 
 struct CudaMallocHostDataFactory {
+    static constexpr bool is_gpu = false;
     uint8_t *data = nullptr;
 
     CudaMallocHostDataFactory(size_t size) {
@@ -201,6 +212,9 @@ struct CudaMallocHostDataFactory {
     }
 
     ~CudaMallocHostDataFactory() {
+        // int nodemask = 0;
+        // get_mempolicy(&nodemask, NULL, 0, data, MPOL_F_NODE | MPOL_F_ADDR);
+        // printf("NODE %d\n", nodemask);
         cudaFreeHost(data);
     }
 };

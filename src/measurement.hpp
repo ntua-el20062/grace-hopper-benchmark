@@ -27,6 +27,21 @@ void millisecond_times_to_gb_sec_file(double *times, size_t n_iterations, size_t
     }
 }
 
+void raw_times_to_file(double *times, size_t n_iterations, std::string path) {
+    std::ofstream file(path);
+    for (size_t i = 0; i < n_iterations; ++i) {
+        file << times[i] << std::endl;
+    }
+}
+
+void millisecond_times_to_gb_sec_file(float *times, size_t n_iterations, size_t n_bytes, std::string path) {
+    std::ofstream file(path);
+    for (size_t i = 0; i < n_iterations; ++i) {
+        float elapsed = times[i] / 1000.;
+        file << (float) n_bytes /  (elapsed * 1000000000.) << std::endl;
+    }
+}
+
 void millisecond_times_to_latency_ns_file(double *times, size_t n_iterations, size_t n_elems, std::string path) {
     std::ofstream file(path);
     for (size_t i = 0; i < n_iterations; ++i) {
@@ -219,9 +234,9 @@ __global__ void clock_granularity_kernel(clock_t *out) {
 
 __global__ void global_clock_granularity_kernel(clock_t *out) {
     for (size_t i = 0; i < 10000; ++i) {
-        clock_t start_clock = get_gpu_clock();
-        clock_t end_clock = get_gpu_clock();
-        out[i] = end_clock - start_clock;
+        // clock_t start_clock = get_gpu_clock();
+        // clock_t end_clock = get_gpu_clock();
+        // out[i] = end_clock - start_clock;
     }
 }
 
@@ -241,14 +256,14 @@ __global__ void basic_loop_overhead_kernel(size_t n_iter, clock_t *measure, size
 }
 
 __global__ void get_clock_kernel(uint64_t *clock) {
-    *clock = get_gpu_clock();
+    // *clock = get_gpu_clock();
 }
 
 void host_device_clock_test() {
     uint64_t host_clock, device_clock;
     cudaEvent_t e;
     cudaEventCreate(&e);
-    get_clock_kernel<<<1, 1>>>(&device_clock),
+    // get_clock_kernel<<<1, 1>>>(&device_clock),
     cudaEventSynchronize(e);
     host_clock = get_cpu_clock();
     cudaEventDestroy(e);
@@ -261,7 +276,7 @@ void kernel_loop_overhead_test() {
     size_t global_dummy;
     std::ofstream file("results/kernel_loop_overhead");
     for (size_t n_iter = 1; n_iter < 1 << 16; ++n_iter) {
-        basic_loop_overhead_kernel<<<1, 1>>>(n_iter, &measure, &global_dummy);
+        // basic_loop_overhead_kernel<<<1, 1>>>(n_iter, &measure, &global_dummy);
         cudaDeviceSynchronize();
         file << measure << std::endl;
     }
@@ -271,7 +286,7 @@ void device_clock_granularity_test() {
     clock_t *times = (clock_t *) malloc(10000 * sizeof(clock_t));
     {
         std::ofstream file("results/device_clock_granularity");
-        clock_granularity_kernel<<<1, 1>>>(times);
+        // clock_granularity_kernel<<<1, 1>>>(times);
         cudaDeviceSynchronize();
         for (size_t i = 0; i < 10000; ++i) {
             file << times[i] << std::endl;
@@ -279,7 +294,7 @@ void device_clock_granularity_test() {
     }
     {
         std::ofstream file("results/device_global_clock_granularity");
-        global_clock_granularity_kernel<<<1, 1>>>(times);
+        // global_clock_granularity_kernel<<<1, 1>>>(times);
         cudaDeviceSynchronize();
         for (size_t i = 0; i < 10000; ++i) {
             file << times[i] << std::endl;
@@ -346,26 +361,26 @@ void sleep_test() {
 }
 
 // launch with one thread per block
-__global__ void gpu_clock_test_kernel(clock_t *global_timesteps, clock_t *local_timesteps) {
-    __shared__ clock_t gt[1024];
-    __shared__ clock_t lt[1024];
+// __global__ void gpu_clock_test_kernel(clock_t *global_timesteps, clock_t *local_timesteps) {
+//     __shared__ clock_t gt[1024];
+//     __shared__ clock_t lt[1024];
 
-    for (size_t i = 0; i < 1024; ++i) {
-        gt[i] = get_gpu_clock();
-        lt[i] = clock();
-    }
+//     for (size_t i = 0; i < 1024; ++i) {
+//         gt[i] = get_gpu_clock();
+//         lt[i] = clock();
+//     }
 
-    for (size_t i = 0; i < 1024; ++i) {
-        global_timesteps[i + blockIdx.x * 1024] = gt[i];
-        local_timesteps[i + blockIdx.x * 1024] = lt[i];
-    }
-}
+//     for (size_t i = 0; i < 1024; ++i) {
+//         global_timesteps[i + blockIdx.x * 1024] = gt[i];
+//         local_timesteps[i + blockIdx.x * 1024] = lt[i];
+//     }
+// }
 
 void gpu_clock_test() {
     clock_t *global_timesteps = (clock_t *) alloca(sizeof(clock_t) * 1024 * 264);
     clock_t *local_timesteps = (clock_t *) alloca(sizeof(clock_t) * 1024 * 264);
 
-    gpu_clock_test_kernel<<<264, 1>>>(global_timesteps, local_timesteps);
+    // gpu_clock_test_kernel<<<264, 1>>>(global_timesteps, local_timesteps);
     cudaDeviceSynchronize();
 
     for (size_t i = 0; i < 264; ++i) { // for each block/file

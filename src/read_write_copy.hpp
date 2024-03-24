@@ -65,6 +65,22 @@ __global__ void device_read_kernel_sync(ulonglong2 *data, size_t n_elems, size_t
     }
 }
 
+__global__ void infinite_device_read_kernel(ulonglong2 *data, size_t n_elems, volatile clock_t *sync) {
+    uint64_t dummy;
+
+    size_t tid = threadIdx.x + blockDim.x * blockIdx.x;
+
+    while (true) {
+        for (size_t i = tid; i < n_elems / 2; i += 1024 * 264) {
+            ulonglong2 cur = data[i];
+            dummy ^= cur.x ^ cur.y;
+        }
+        if (*sync == 1) {
+            printf("%lu ", dummy);
+        }
+    }
+}
+
 __global__ void device_write_kernel_sync(uint64_t *a, size_t n_elems, size_t n_iter, clock_t *time, clock_t *sync) {
     __shared__ clock_t clocks[1024];
     size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -644,7 +660,7 @@ void memcpy_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, 
 // ---------------- HOST TESTS --------------------------------
 void run_write_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
     write_test_host_template<HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr/" + end);
-    write_test_host_template<DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm/" + end);
+    write_test_host_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm/" + end);
     write_test_host_template<REMOTE_HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr_remote/" + end);
     write_test_host_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_remote/" + end);
     // write_test_host_template<FAR_HOST_MEM>(n_iter, n_bytes, n_threads, 72, base + "ddr_far/" + end);
@@ -683,11 +699,19 @@ template <typename SRC_ALLOC, typename DST_ALLOC>
 void cuda_memcpy_template(size_t n_iter, size_t n_bytes, std::string name) {
     double times[n_iter];
 
+    // if constexpr (SRC_ALLOC::is_gpu && DST_ALLOC::is_gpu) {
+    //     std::cout << DST_ALLOC::gpu_id << " " << SRC_ALLOC::gpu_id << std::endl;
+    // }
     SRC_ALLOC src(n_bytes);
     DST_ALLOC dst(n_bytes);
     for (size_t i = 0; i < n_iter; ++i) {
         uint64_t start = get_cpu_clock();
-        cudaMemcpy(dst.data, src.data, n_bytes, cudaMemcpyDeviceToDevice);
+        // if constexpr (SRC_ALLOC::is_gpu && DST_ALLOC::is_gpu) {
+        //     cudaMemcpyPeerAsync(dst.data, DST_ALLOC::gpu_id, src.data, SRC_ALLOC::gpu_id, n_bytes);
+        // } else {
+        // cudaMemcpyAsync(dst.data, src.data, n_bytes, cudaMemcpyDefault);
+        cudaMemcpy(dst.data, src.data, n_bytes, cudaMemcpyDefault);
+        // }
         cudaDeviceSynchronize();
         uint64_t end = get_cpu_clock();
         times[i] = get_elapsed_milliseconds_clock(start, end);

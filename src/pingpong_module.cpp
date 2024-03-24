@@ -5,6 +5,22 @@
 #define FLAG_A 0
 #define FLAG_B 1
 
+class SpinLock {
+    std::atomic_flag locked;
+public:
+    SpinLock();
+    void lock();
+    void unlock();
+};
+
+SpinLock::SpinLock() : locked(ATOMIC_FLAG_INIT) {}
+void SpinLock::lock() {
+    while (locked.test_and_set(std::memory_order_acquire)) {}
+}
+void SpinLock::unlock() {
+    locked.clear(std::memory_order_release);
+}
+
 static __attribute__((always_inline)) inline uint64_t get_cpu_clock() {
     uint64_t tsc;
 

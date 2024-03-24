@@ -8,3 +8,6 @@ ptx:
 	nvcc -g -O2 -arch=sm_90 -ptx -lcublas main.cu -o main.ptx
 pre:
 	nvcc -g -O2 -arch=sm_90 -E -lcublas main.cu
+nccl:
+	# mpicxx -O2 -o nccl.out pingpong.o nccl.cpp -I/user-environment/env/default/include -L/user-environment/env/default/lib64 -L/user-environment/env/default/lib -lcudart -lmpi -lnccl -lnuma -lmpi
+	nvcc -arch=sm_90 -O2 -o nccl.out pingpong.o nccl.cpp -I/user-environment/env/default/include -L/user-environment/env/default/lib64 -L/user-environment/env/default/lib -lcudart -lmpi -lnccl -lnuma -lmpi

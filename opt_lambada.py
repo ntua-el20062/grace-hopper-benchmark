@@ -1,4 +1,7 @@
 import torch
+new_alloc = torch.cuda.memory.CUDAPluggableAllocator('/users/lfusco/code/gh_benchmark/alloc.so', 'my_malloc', 'my_free')
+torch.cuda.memory.change_current_allocator(new_alloc)
+
 from transformers.models.opt.modeling_opt import OPTAttention, OPTDecoderLayer, OPTForCausalLM
 from transformers import GPT2Tokenizer
 from datasets import load_dataset
@@ -9,6 +12,8 @@ opt_families = [
     'facebook/opt-30b',
     'facebook/opt-66b',
 ]
+llama = 'meta-llama/Llama-2-70b-chat-hf'
+
 class Evaluator:
     def __init__(self, dataset, tokenizer, device):
         self.dataset = dataset
@@ -39,13 +44,11 @@ class Evaluator:
         acc = hit / total
         return acc
     
-if __name__ == '__main__':
-    model_name = 'facebook/opt-125m'
-tokenizer = GPT2Tokenizer.from_pretrained('facebook/opt-13b')
+tokenizer = GPT2Tokenizer.from_pretrained(opt_families[-2])
 dataset = load_dataset('lambada', split='validation[:1000]')
 evaluator = Evaluator(dataset, tokenizer, 'cuda')
 
 
-model_fp16 = OPTForCausalLM.from_pretrained('facebook/opt-125m', torch_dtype=torch.float16).cuda()
+model_fp16 = OPTForCausalLM.from_pretrained(opt_families[-2], torch_dtype=torch.float16).cuda()
 acc_fp16 = evaluator.evaluate(model_fp16)
 print(f'Original model (fp16) accuracy: {acc_fp16}')
