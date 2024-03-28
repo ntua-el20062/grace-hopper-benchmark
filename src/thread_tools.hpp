@@ -6,7 +6,7 @@
 #include "measurement.hpp"
 #include "constants.hpp"
 
-#define NUM_THREADS 72
+#define NUM_THREADS 1
 
 constexpr size_t HOST_ID = (size_t) 0;
 constexpr size_t DEVICE_ID = (size_t) -1;
@@ -20,22 +20,26 @@ public:
     void unlock();
 };
 
-double latency_function(uint8_t *in, size_t n_elem) {    
+double latency_function(uint8_t *in, size_t n_elem) {
+    in = in+(n_elem-1)*(2*CACHELINE_SIZE);
     uint64_t start = get_cpu_clock();
-    for (size_t i = 0; i < n_elem; ++i) {
-        asm volatile("ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
+    // for (size_t i = 0; i < n_elem; i+=8) {
+    //     asm volatile("ldr %0, [%1];"
+    //                  "ldr %0, [%1];"
+    //                  "ldr %0, [%1];"
+    //                  "ldr %0, [%1];"
 
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];"
-                     "ldr %0, [%1];" : "=r" (in) : "r" ((uint8_t **) in) :);
+    //                  "ldr %0, [%1];"
+    //                  "ldr %0, [%1];"
+    //                  "ldr %0, [%1];"
+    //                  "ldr %0, [%1];" : "=r" (in) : "r" ((uint8_t **) in) :);
+    // }
+    for (size_t i = 0; i < n_elem; ++i) {
+        in = (uint8_t *) *((uint64_t *) in);
     }
     uint64_t end = get_cpu_clock();
 
-    return get_elapsed_milliseconds_clock(start, end) / 8;
+    return get_elapsed_milliseconds_clock(start, end);
 }
 
 double latency_write_function(uint8_t *in, size_t n_elem) {    
@@ -295,17 +299,29 @@ void infinite_thread_read_function(double *a, size_t n_elems) {
 }
 
 uint64_t thread_copy_function(uint64_t start_time, double *a, double *b, size_t n_elems) {
+    a -= 2;
+    b -= 2;
     while (get_cpu_clock() < start_time) {}
     for (size_t i = 0; i < n_elems; i += 8) {
-        b[i] = a[i];
-        b[i + 1] = a[i + 1];
-        b[i + 2] = a[i + 2];
-        b[i + 3] = a[i + 3];
+        // b[i] = a[i];
+        // b[i + 1] = a[i + 1];
+        // b[i + 2] = a[i + 2];
+        // b[i + 3] = a[i + 3];
 
-        b[i + 4] = a[i + 4];
-        b[i + 5] = a[i + 5];
-        b[i + 6] = a[i + 6];
-        b[i + 7] = a[i + 7];
+        // b[i + 4] = a[i + 4];
+        // b[i + 5] = a[i + 5];
+        // b[i + 6] = a[i + 6];
+        // b[i + 7] = a[i + 7];
+
+        asm volatile("ldp x0, x1, [%0, #16];"
+                    "stp x0, x1, [%1, #16];"
+                    "ldp x2, x3, [%0, #32];"
+                    "stp x2, x3, [%1, #32];"
+
+                    "ldp x4, x5, [%0, #48];"
+                    "stp x4, x5, [%1, #48];"
+                    "ldp x6, x7, [%0, #64]!;"
+                    "stp x6, x7, [%1, #64]!;" :: "r" (a), "r" (b) : "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7");
     }
     return get_cpu_clock();
 }
@@ -353,6 +369,7 @@ void thread_function(thread_data *t_info) {
             case LATENCY_TEST: {
                 double *times = (double *) t_info->second_buffer;
                 size_t n_iter = t_info->n_iter;
+                // memcpy(cache_filler, cache_filler, sizeof(cache_filler));
                 for (size_t i = 0; i < n_iter; ++i) {
                     times[i] = latency_function(t_info->buffer, t_info->size);
                     // for (size_t i = 0; i < sizeof(cache_filler); i += 64) {

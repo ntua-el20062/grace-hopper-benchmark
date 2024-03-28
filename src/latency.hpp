@@ -76,7 +76,7 @@ void latency_test_host_template(size_t n_iter, size_t n_bytes, size_t t_id, std:
         n_elem = n_bytes / PAGE_SIZE;
     } else {
         initialize_memory_pointer_chase(factory.data, n_bytes);
-        n_elem = n_bytes / CACHELINE_SIZE;
+        n_elem = n_bytes / (CACHELINE_SIZE*2);
     }
 
     if constexpr (IS_WRITE) {
@@ -87,7 +87,7 @@ void latency_test_host_template(size_t n_iter, size_t n_bytes, size_t t_id, std:
 
     // for (size_t i = 0; i < n_iter; ++i) {
     //     if constexpr (IS_WRITE) {
-    //         times[i] = latency_write_function(factory.data, n_elem);
+    //         times[i] = latency_write_function(factory.data, n_elem); 
     //     } else {
     //         times[i] = latency_function(factory.data, n_elem);
     //     }
@@ -123,7 +123,7 @@ void latency_test_device_template(size_t n_iter, size_t n_bytes, std::string nam
         n_elem = n_bytes / PAGE_SIZE;
     } else {
         initialize_memory_pointer_chase(factory.data, n_bytes);
-        n_elem = n_bytes / CACHELINE_SIZE;
+        n_elem = n_bytes / (CACHELINE_SIZE*2);
     }
 
     if constexpr (IS_WRITE) {

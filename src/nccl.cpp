@@ -292,9 +292,9 @@ void group_send_recv(int rank, int world_size, size_t n_iter, size_t n_bytes, nc
 
         uint64_t a = get_cpu_clock();
 
-        if (rank < half_world) {
-            a = my_barrier(local_comm);
-        }
+        // if (rank < half_world) {
+        //     a = my_barrier(local_comm);
+        // }
 
         if constexpr (!MPI)
             ncclGroupStart();
@@ -328,6 +328,7 @@ void group_send_recv(int rank, int world_size, size_t n_iter, size_t n_bytes, nc
         } else {
             ncclGroupEnd();
             cudaStreamSynchronize(stream);
+            cudaDeviceSynchronize();
         }
 
         uint64_t b = measure_end_time(local_comm);
@@ -347,22 +348,33 @@ void run_group_send_recv_tests(int rank, int world_size, int proc_per_node, size
         printf("Running group_send_recv %s with %lu bytes\n", m.c_str(), n_bytes);
         fflush(stdout);
     }
-    // group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_ddr/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_hbm/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_ddr_remote/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_hbm_remote/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<CUR_GPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_ddr/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_ddr/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_hbm/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_ddr_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_CPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_hbm_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_CPU>, CUDA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_cuda/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_GPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_ddr/" + std::to_string(n_bytes));
     group_send_recv<NUMA_ALLOC<CUR_GPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_hbm/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<CUR_GPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_ddr_remote/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<CUR_GPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_hbm_remote/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_ddr/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_hbm/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_ddr_remote/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_hbm_remote/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_ddr/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_hbm/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_ddr_remote/" + std::to_string(n_bytes));
-    // group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_GPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_ddr_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_GPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_hbm_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<CUR_GPU>, CUDA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_cuda/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_ddr/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_hbm/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_ddr_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_CPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_hbm_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_CPU>, CUDA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote_cuda/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_ddr/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_hbm/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_ddr_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_GPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_hbm_remote/" + std::to_string(n_bytes));
+    group_send_recv<NUMA_ALLOC<OTHER_GPU>, CUDA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote_cuda/" + std::to_string(n_bytes));
+    group_send_recv<CUDA_ALLOC<CUR_GPU>, NUMA_ALLOC<CUR_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "cuda_ddr/" + std::to_string(n_bytes));
+    group_send_recv<CUDA_ALLOC<CUR_GPU>, NUMA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "cuda_hbm/" + std::to_string(n_bytes));
+    group_send_recv<CUDA_ALLOC<CUR_GPU>, NUMA_ALLOC<OTHER_CPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "cuda_ddr_remote/" + std::to_string(n_bytes));
+    group_send_recv<CUDA_ALLOC<CUR_GPU>, NUMA_ALLOC<OTHER_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "cuda_hbm_remote/" + std::to_string(n_bytes));
+    group_send_recv<CUDA_ALLOC<CUR_GPU>, CUDA_ALLOC<CUR_GPU>, BI, MPI>(rank, world_size, n_iter, n_bytes, comm, stream, m + "cuda_cuda/" + std::to_string(n_bytes));
+
+
 }
 
 static uint64_t getHostHash(const char* string) {
@@ -416,7 +428,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(local_comm, &local_rank);
     MPI_Comm_size(local_comm, &local_size);
 
-    printf("HOST %s, GPU %d/%d, GLOBAL %d/%d LOCAL %d/%d\n", hostname, gpu_id, proc_per_node, rank, world_size, local_rank, local_size);
+    printf("HOST %s, GPU %d/%d, GLOBAL %d/%d LOCAL %d/%d, TID %d\n", hostname, gpu_id, proc_per_node, rank, world_size, local_rank, local_size, sched_getcpu());
     printf("%lu\n", my_barrier(local_comm));
     fflush(stdout);
 
@@ -437,10 +449,12 @@ int main(int argc, char *argv[]) {
         // run_send_recv_tests<false>(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
         // run_all_reduce_tests(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
         // run_all_gather_tests(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
-        // run_group_send_recv_tests<true, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
-        // run_group_send_recv_tests<false, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        // MPI
+        run_group_send_recv_tests<true, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        run_group_send_recv_tests<false, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        // NCCL
         // run_group_send_recv_tests<true, false>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
-        run_group_send_recv_tests<false, false>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        // run_group_send_recv_tests<false, false>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
     }
 
     ncclCommDestroy(comm);

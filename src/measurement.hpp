@@ -182,7 +182,7 @@ double get_elapsed_milliseconds(struct timeval start, struct timeval end) {
 __attribute__((always_inline)) inline uint64_t get_cpu_freq() {
     uint64_t freq;
 
-    asm volatile("mrs %0, cntfrq_el0" : "=r"(freq));
+    asm volatile("mrs %0, cntfrq_el0" : "=r"(freq) :: "memory");
 
     return freq;
 }
@@ -191,7 +191,7 @@ __attribute__((always_inline)) inline uint64_t get_cpu_clock() {
     uint64_t tsc;
 
     asm volatile("isb" : : : "memory");
-    asm volatile("mrs %0, cntvct_el0" : "=r"(tsc)); // alternative is cntpct_el0
+    asm volatile("mrs %0, cntvct_el0" : "=r"(tsc) :: "memory"); // alternative is cntpct_el0
 
     return tsc;
 }

@@ -48,7 +48,7 @@ void initialize_memory_pointer_chase(uint8_t *data, size_t size) {
 
     size_t *page_sequence = (size_t *) malloc(sizeof(size_t) * num_pages);
     page_sequence[0] = 0; // first page is the first page
-    _random_init(0, num_pages - 1);
+    _random_init(time(nullptr), num_pages - 1);
 
     for (size_t i = 1; i < num_pages; ++i) {
         page_sequence[i] = _random() + 1;
@@ -58,10 +58,10 @@ void initialize_memory_pointer_chase(uint8_t *data, size_t size) {
         size_t page_offset = PAGE_SIZE * page_sequence[i];
         uint8_t *page_base = data + page_offset;
         uint8_t *itr = page_base;
-        size_t num_cachelines = std::min(size - page_offset, PAGE_SIZE) / CACHELINE_SIZE;
-        _random_init(0, num_cachelines - 1);
+        size_t num_cachelines = std::min(size - page_offset, PAGE_SIZE) / (CACHELINE_SIZE*2);
+        _random_init(time(nullptr), num_cachelines - 1);
         for (size_t j = 0; j < num_cachelines - 1; ++j) {
-            uint8_t *new_addr = page_base + (_random() + 1) * CACHELINE_SIZE;
+            uint8_t *new_addr = page_base + (_random() + 1) * (CACHELINE_SIZE*2);
             *((uint8_t **) itr) = new_addr;
             itr = new_addr;
         }
@@ -76,13 +76,17 @@ void initialize_memory_pointer_chase(uint8_t *data, size_t size) {
 
     free(page_sequence);
 
-    invalidate_all(data, size);
+    // invalidate_all(data, size);
+
+    // for (size_t i = 0; i < size; i += (2*CACHELINE_SIZE)) {
+    //     *((uint8_t **) &data[i]) = &data[i - (2*CACHELINE_SIZE)];
+    // }
 }
 
 void initialize_memory_page_chase(uint8_t *data, size_t size) {
     size_t num_pages = CEIL(size, PAGE_SIZE);
 
-    _random_init(0, num_pages - 1);
+    _random_init(time(nullptr), num_pages - 1);
     uint8_t *itr = data;
     for (size_t j = 0; j < num_pages - 1; ++j) {
         uint8_t *new_addr = data + (_random() + 1) * PAGE_SIZE;

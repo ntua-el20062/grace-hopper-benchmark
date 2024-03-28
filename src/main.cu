@@ -11,7 +11,7 @@
 #include "stream.hpp"
 #include "read_write_copy.hpp"
 #include "latency.hpp"
-//#include "apps.hpp"
+#include "apps.hpp"
 #include "cache.hpp"
 #include "sweep.hpp"
 #include "backforth.cpp"
@@ -215,21 +215,23 @@ int main() {
 
     // init_thread_array(main_thread);
 
-    std::string base = "/noisy/";
+    std::string base = "";
 
+
+    // base = "/noisy/";
     // size_t noise_bytes = CEIL(1UL << 33, 64 * 72) * 64 * 72;
     // DEVICE_MEM infinite(noise_bytes);
     // run_test(INFINITE_READ, 72, 0, infinite.data, nullptr, (noise_bytes) / sizeof(double), nullptr, true);
 
-    size_t noise_bytes = 1UL << 33;
-    HOST_MEM infinite(noise_bytes);
-    clock_t dummy = 0;
-    infinite_device_read_kernel<<<1024, 264>>>((ulonglong2 *)infinite.data, noise_bytes / sizeof(double), &dummy);
-    printf("NOISE STARTED!\n");
+    // size_t noise_bytes = 1UL << 33;
+    // HOST_MEM infinite(noise_bytes);
+    // clock_t dummy = 0;
+    // infinite_device_read_kernel<<<1024, 264>>>((ulonglong2 *)infinite.data, noise_bytes / sizeof(double), &dummy);
+    // printf("NOISE STARTED!\n");
 
-    print_power();
+    // print_power();
 
-    return;
+    // return;
 
     // for (size_t n_threads = 5; n_threads <= 70; n_threads += 5) {
     //     for (double ratio = 0.1; ratio <= 0.95; ratio += 0.1) {
@@ -404,7 +406,7 @@ int main() {
     //     run_copy_tests_device(10, i, 264, "large/", std::to_string(i));
     // }
 
-    // init_cublas();
+    init_cublas();
 
     // for (size_t i = 4096; i <= 1UL << 32; i = (size_t)((double) i * sqrt(sqrt(2)))) {
     //     i = CEIL(i, 64) * 64;
@@ -415,8 +417,13 @@ int main() {
         // run_cublas_gemm_tests(100, i);
         // run_openblas_gemm_tests(10, i);
     // }
-    // run_cublas_gemm_tests(10, 1UL << 32);
+    for (size_t i = 4096; i <= 1UL << 33; i = (size_t)((double) i * std::sqrt(2))) {
+        run_cublas_gemm_tests<double>(10, i);
+        run_cublas_gemm_tests<TF32>(10, i);
+        run_cublas_gemm_tests<float>(10, i);
+        run_cublas_gemm_tests<__half>(10, i);
+    }
     // run_openblas_gemm_tests(10, 1UL << 32);
 
-    terminate_threads();
+    // terminate_threads();
 }
