@@ -221,29 +221,35 @@ void all_gather(int rank, int world_size, size_t n_iter, size_t n_bytes, ncclCom
 }
 
 void run_all_gather_tests(int rank, int world_size, int proc_per_node, size_t n_iter, size_t n_bytes, ncclComm_t &comm, cudaStream_t &stream) {
-    std::string m;
-    if (proc_per_node > 1) {
-        m = "local/";
-    } else {
+    std::string m, tail;
+    if (world_size > proc_per_node) {
         m = "remote/";
+        tail = std::to_string(world_size / proc_per_node);
+    } else {
+        m = "local/";
+        tail = std::to_string(n_bytes);
     }
-    all_gather<NUMA_ALLOC<CUR_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr/" + std::to_string(n_bytes));
-    all_gather<NUMA_ALLOC<CUR_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm/" + std::to_string(n_bytes));
-    all_gather<NUMA_ALLOC<OTHER_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote/" + std::to_string(n_bytes));
-    all_gather<NUMA_ALLOC<OTHER_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote/" + std::to_string(n_bytes));
+    all_gather<NUMA_ALLOC<CUR_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr/" + tail);
+    all_gather<NUMA_ALLOC<CUR_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm/" + tail);
+    all_gather<NUMA_ALLOC<OTHER_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote/" + tail);
+    all_gather<NUMA_ALLOC<OTHER_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote/" + tail);
+    // all_gather<CUDA_ALLOC<CUR_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "cuda/" + tail);
 }
 
 void run_all_reduce_tests(int rank, int world_size, int proc_per_node, size_t n_iter, size_t n_bytes, ncclComm_t &comm, cudaStream_t &stream) {
-    std::string m;
-    if (proc_per_node > 1) {
-        m = "local/";
-    } else {
+    std::string m, tail;
+    if (world_size > proc_per_node) {
         m = "remote/";
+        tail = std::to_string(world_size / proc_per_node);
+    } else {
+        m = "local/";
+        tail = std::to_string(n_bytes);
     }
-    all_reduce<NUMA_ALLOC<CUR_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr/" + std::to_string(n_bytes));
-    all_reduce<NUMA_ALLOC<CUR_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm/" + std::to_string(n_bytes));
-    all_reduce<NUMA_ALLOC<OTHER_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote/" + std::to_string(n_bytes));
-    all_reduce<NUMA_ALLOC<OTHER_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote/" + std::to_string(n_bytes));
+    all_reduce<NUMA_ALLOC<CUR_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr/" + tail);
+    all_reduce<NUMA_ALLOC<CUR_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm/" + tail);
+    all_reduce<NUMA_ALLOC<OTHER_CPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "ddr_remote/" + tail);
+    all_reduce<NUMA_ALLOC<OTHER_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "hbm_remote/" + tail);
+    // all_reduce<CUDA_ALLOC<CUR_GPU>>(rank, world_size, n_iter, n_bytes, comm, stream, m + "cuda/" + tail);
 }
 
 template <bool BI>
@@ -443,19 +449,22 @@ int main(int argc, char *argv[]) {
     ncclComm_t comm;
     ncclCommInitRank(&comm, world_size, id, rank);
 
-    for (size_t n_bytes = 1; n_bytes <= 1UL << 32; n_bytes *= 2) {
+    for (size_t n_bytes = 1UL << 33; n_bytes <= 1UL << 33; n_bytes *= 2) {
         // std::cout << n_bytes << std::endl;
         // run_send_recv_tests<true>(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
         // run_send_recv_tests<false>(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
-        // run_all_reduce_tests(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
-        // run_all_gather_tests(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
+        // run_all_reduce_tests(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        // run_all_gather_tests(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
         // MPI
-        run_group_send_recv_tests<true, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
-        run_group_send_recv_tests<false, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        // run_group_send_recv_tests<true, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        // run_group_send_recv_tests<false, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
         // NCCL
         // run_group_send_recv_tests<true, false>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
         // run_group_send_recv_tests<false, false>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
     }
+
+    run_all_reduce_tests(rank, world_size, proc_per_node, 10, 1UL << 32, comm, stream);
+    run_all_gather_tests(rank, world_size, proc_per_node, 10, 1UL << 24, comm, stream);
 
     ncclCommDestroy(comm);
 

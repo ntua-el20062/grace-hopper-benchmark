@@ -406,7 +406,7 @@ int main() {
     //     run_copy_tests_device(10, i, 264, "large/", std::to_string(i));
     // }
 
-    init_cublas();
+    // init_cublas();
 
     // for (size_t i = 4096; i <= 1UL << 32; i = (size_t)((double) i * sqrt(sqrt(2)))) {
     //     i = CEIL(i, 64) * 64;
@@ -417,12 +417,12 @@ int main() {
         // run_cublas_gemm_tests(100, i);
         // run_openblas_gemm_tests(10, i);
     // }
-    for (size_t i = 4096; i <= 1UL << 33; i = (size_t)((double) i * std::sqrt(2))) {
-        run_cublas_gemm_tests<double>(10, i);
-        run_cublas_gemm_tests<TF32>(10, i);
-        run_cublas_gemm_tests<float>(10, i);
-        run_cublas_gemm_tests<__half>(10, i);
-    }
+    // for (size_t i = 4096; i <= 1UL << 33; i = (size_t)((double) i * std::sqrt(2))) {
+    //     run_cublas_gemm_tests<double>(10, i);
+    //     run_cublas_gemm_tests<TF32>(10, i);
+    //     run_cublas_gemm_tests<float>(10, i);
+    //     run_cublas_gemm_tests<__half>(10, i);
+    // }
     // run_openblas_gemm_tests(10, 1UL << 32);
 
     // terminate_threads();
