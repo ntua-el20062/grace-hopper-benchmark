@@ -120,7 +120,6 @@ struct MmapDataFactory {
     MmapDataFactory(size_t n_bytes) {
         size = n_bytes;
         data = (uint8_t *) mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        madvise(data, size, MADV_HUGEPAGE);
     }
 
     ~MmapDataFactory() {

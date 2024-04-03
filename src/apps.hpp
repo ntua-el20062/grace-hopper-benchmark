@@ -149,27 +149,28 @@ void openblas_gemm_template(size_t n_iter, size_t n_bytes, std::string name) {
         uint64_t end = get_cpu_clock();
         times[iter] = get_elapsed_milliseconds_clock(start, end);
     }
-
+    printf("%s\n", ("results/apps/gemm/openblas/" + name).c_str());
+    fflush(stdout);
     millisecond_times_to_gb_sec_file(times, n_iter, flops, "results/apps/gemm/openblas/" + name);
 }
 
 void run_openblas_gemm_tests(size_t n_iter, size_t n_bytes) {
-    openblas_gemm_template<HOST_MEM, HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_ddr_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<HOST_MEM, DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_hbm_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<HOST_MEM, REMOTE_HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_ddr_remote_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<HOST_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_hbm_remote_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<DEVICE_MEM, HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_ddr_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<DEVICE_MEM, DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_hbm_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<DEVICE_MEM, REMOTE_HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_ddr_remote_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<DEVICE_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_hbm_remote_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_remote_ddr_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_remote_hbm_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "ddr_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_remote_ddr_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_remote_hbm_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, "hbm_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
+    openblas_gemm_template<HOST_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<HOST_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<HOST_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<HOST_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_hbm_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<DEVICE_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<DEVICE_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<DEVICE_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<DEVICE_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_hbm_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_HOST_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_HOST_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_DEVICE_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_ddr_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_DEVICE_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_hbm_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
 }
 #endif
 

@@ -172,6 +172,11 @@ int main() {
     } else {
         std::cout << "[INFO] thread pinning works: CORE " << main_thread << std::endl;
     }
+#else
+    #pragma omp parallel
+    {
+        printf("%d\n", sched_getcpu());
+    }
 #endif
     // nid002288
     int device_count = 0;
@@ -191,6 +196,7 @@ int main() {
         }
     }
     cudaSetDevice(0);
+
 
     // host_device_clock_test();
 
@@ -423,7 +429,7 @@ int main() {
     //     run_cublas_gemm_tests<float>(10, i);
     //     run_cublas_gemm_tests<__half>(10, i);
     // }
-    // run_openblas_gemm_tests(10, 1UL << 32);
+    run_openblas_gemm_tests(10, 1UL << 32);
 
     // terminate_threads();
 }

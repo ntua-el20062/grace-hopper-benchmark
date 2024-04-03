@@ -45,9 +45,10 @@ void backforth_template(size_t n_iter, size_t n_bytes, size_t inner, std::string
 
 template <bool PAGELEVEL>
 void run_backforth_tests(size_t n_iter, size_t n_bytes, size_t inner) {
-    backforth_template<HOST_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/ddr/" + std::to_string(inner));
-    backforth_template<DEVICE_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/hbm/" + std::to_string(inner));
-    backforth_template<REMOTE_HOST_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/ddr_remote/" + std::to_string(inner));
-    backforth_template<REMOTE_DEVICE_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/hbm_remote/" + std::to_string(inner));
-    backforth_template<ManagedMemoryDataFactory, PAGELEVEL>(n_iter, n_bytes, inner, "/managed/" + std::to_string(inner));
+    // backforth_template<HOST_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/ddr/" + std::to_string(inner));
+    // backforth_template<DEVICE_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/hbm/" + std::to_string(inner));
+    // backforth_template<REMOTE_HOST_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/ddr_remote/" + std::to_string(inner));
+    // backforth_template<REMOTE_DEVICE_MEM, PAGELEVEL>(n_iter, n_bytes, inner, "/hbm_remote/" + std::to_string(inner));
+    // backforth_template<ManagedMemoryDataFactory, PAGELEVEL>(n_iter, n_bytes, inner, "/managed/" + std::to_string(inner));
+    backforth_template<MmapDataFactory, PAGELEVEL>(n_iter, n_bytes, inner, "/mmap/" + std::to_string(inner));
 }
