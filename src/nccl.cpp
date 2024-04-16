@@ -298,9 +298,9 @@ void group_send_recv(int rank, int world_size, size_t n_iter, size_t n_bytes, nc
 
         uint64_t a = get_cpu_clock();
 
-        // if (rank < half_world) {
-        //     a = my_barrier(local_comm);
-        // }
+        if (rank < half_world) {
+            a = my_barrier(local_comm);
+        }
 
         if constexpr (!MPI)
             ncclGroupStart();
@@ -450,14 +450,14 @@ int main(int argc, char *argv[]) {
     ncclCommInitRank(&comm, world_size, id, rank);
 
     for (size_t n_bytes = 1UL << 33; n_bytes <= 1UL << 33; n_bytes *= 2) {
-        // std::cout << n_bytes << std::endl;
+        std::cout << n_bytes << std::endl;
         // run_send_recv_tests<true>(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
         // run_send_recv_tests<false>(rank, world_size, proc_per_node, 100, n_bytes, comm, stream);
         // run_all_reduce_tests(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
         // run_all_gather_tests(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
         // MPI
-        // run_group_send_recv_tests<true, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
-        // run_group_send_recv_tests<false, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        run_group_send_recv_tests<true, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
+        run_group_send_recv_tests<false, true>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
         // NCCL
         // run_group_send_recv_tests<true, false>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
         // run_group_send_recv_tests<false, false>(rank, world_size, proc_per_node, 10, n_bytes, comm, stream);
