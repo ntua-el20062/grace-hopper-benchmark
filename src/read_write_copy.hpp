@@ -177,31 +177,38 @@ void run_clock_analysis_device() {
     free(end_times);
 }
 
-// void run_clock_analysis_host() {
-//     size_t n_threads = 2;
-//     size_t n_iter = 10;
-//     uint64_t start_times[n_iter * n_threads];
-//     uint64_t end_times[n_iter * n_threads];
-//     size_t n_bytes = 1UL << 32;
-//     size_t n_elems = n_bytes / sizeof(double);
-//     MmapDataFactory factory(n_bytes);
-//     dispatch_command(HOST_ID, WRITE, factory.data, n_bytes);
-//     for (size_t itr = 0; itr < n_iter; itr++) {
-//         uint64_t nominal_time = run_test(WRITE_TEST, n_threads, 0, factory.data, nullptr, n_elems, &start_times[itr * n_threads], &end_times[itr * n_threads]);
-//         for (size_t j = 0; j < n_threads; ++j) {
-//             start_times[itr * n_threads + j] -= nominal_time;
-//             end_times[itr * n_threads + j] -= nominal_time;
-//         }
-//     }
-//     for (size_t itr = 0; itr < n_iter; itr++) {
-//         std::ofstream start_file("results/clock_analysis/host/start/" + std::to_string(itr));
-//         std::ofstream end_file("results/clock_analysis/host/end/" + std::to_string(itr));
-//         for (size_t i = 0; i < n_threads; i++) {
-//             start_file << start_times[itr * n_threads + i] << std::endl;
-//             end_file << end_times[itr * n_threads + i] << std::endl;
-//         }
-//     }
-// }
+ void run_clock_analysis_host() {
+     std::cout << "start run_clock_analysis_host" << std::endl;
+     size_t n_threads = 72;
+     size_t n_iter = 10;
+     uint64_t start_times[n_iter * n_threads];
+     uint64_t end_times[n_iter * n_threads];
+     size_t n_bytes = 1UL << 32;
+     size_t n_elems = n_bytes / sizeof(double);
+     MmapDataFactory factory(n_bytes);
+     dispatch_command(HOST_ID, WRITE, factory.data, n_bytes);
+     for (size_t itr = 0; itr < n_iter; itr++) {
+	 std::cout << "HIIIIIIIIIIIIIIIIIIIII" << std::endl;
+         uint64_t nominal_time = run_test(WRITE_TEST, n_threads, 0, factory.data, nullptr, n_elems, &start_times[itr * n_threads], &end_times[itr * n_threads]);
+         for (size_t j = 0; j < n_threads; ++j) {
+             start_times[itr * n_threads + j] -= nominal_time;
+             end_times[itr * n_threads + j] -= nominal_time;
+         }
+     }
+     for (size_t itr = 0; itr < n_iter; itr++) {
+	             std::filesystem::create_directories(std::filesystem::path("results/clock_analysis/host/start/").parent_path());
+                     std::filesystem::create_directories(std::filesystem::path("results/clock_analysis/host/end/").parent_path());
+
+         std::ofstream start_file("results/clock_analysis/host/start/" + std::to_string(itr));
+         std::ofstream end_file("results/clock_analysis/host/end/" + std::to_string(itr));
+         for (size_t i = 0; i < n_threads; i++) {
+             start_file << start_times[itr * n_threads + i] << std::endl;
+             end_file << end_times[itr * n_threads + i] << std::endl;
+         }
+     }
+     std::cout << "done run_clock_analysis_host" << std::endl;
+
+ }
 
 __global__ void device_copy_kernel_sync(double *a, double *b, size_t n_elems, size_t n_iter, clock_t *time, clock_t *sync) {
     __shared__ clock_t clocks[1024];
@@ -565,22 +572,31 @@ void run_copy_throughput_test_device(size_t n_iter, size_t n_bytes) {
 void run_write_tests_device(size_t n_iter, size_t n_bytes, int grid_size, std::string base, std::string end) {
     write_test_device_template<HOST_MEM>(n_iter, n_bytes, grid_size, 0, base + "ddr/" + end);
     write_test_device_template<DEVICE_MEM>(n_iter, n_bytes, grid_size, 0, base + "hbm/" + end);
-    write_test_device_template<REMOTE_HOST_MEM>(n_iter, n_bytes, grid_size, 0, base + "ddr_remote/" + end);
-    write_test_device_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, grid_size, 0, base + "hbm_remote/" + end);
+    //write_test_device_template<REMOTE_HOST_MEM>(n_iter, n_bytes, grid_size, 0, base + "ddr_remote/" + end);
+    //write_test_device_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, grid_size, 0, base + "hbm_remote/" + end);
 }
 
 void run_read_tests_device(size_t n_iter, size_t n_bytes, int grid_size, std::string base, std::string end) {
     read_test_device_template<HOST_MEM>(n_iter, n_bytes, grid_size, 0, base + "ddr/" + end);
     read_test_device_template<DEVICE_MEM>(n_iter, n_bytes, grid_size, 0, base + "hbm/" + end);
-    read_test_device_template<REMOTE_HOST_MEM>(n_iter, n_bytes, grid_size, 0, base + "ddr_remote/" + end);
-    read_test_device_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, grid_size, 0, base + "hbm_remote/" + end);
+    //read_test_device_template<REMOTE_HOST_MEM>(n_iter, n_bytes, grid_size, 0, base + "ddr_remote/" + end);
+    //read_test_device_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, grid_size, 0, base + "hbm_remote/" + end);
 }
 
 void run_copy_tests_device(size_t n_iter, size_t n_bytes, int grid_size, std::string base, std::string end) {
-    copy_test_device_template<HOST_MEM, HOST_MEM>(n_iter, n_bytes, grid_size, base + "ddr_ddr/" + end);
-    copy_test_device_template<HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, grid_size, base + "ddr_hbm/" + end);
-    copy_test_device_template<DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, grid_size, base + "hbm_hbm/" + end);
-    copy_test_device_template<DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, grid_size, base + "hbm_ddr/" + end);
+	std::cout << "started  run_copy_tests_device" << std::endl;
+	copy_test_device_template<HOST_MEM, HOST_MEM>(n_iter, n_bytes, grid_size, base + "ddr_ddr/" + end);
+        std::cout << "started  run_copy_tests_device host host" << std::endl;
+
+	copy_test_device_template<HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, grid_size, base + "ddr_hbm/" + end);
+        std::cout << " started copy_test_device_template host dev" << std::endl;
+    
+	copy_test_device_template<DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, grid_size, base + "hbm_hbm/" + end);
+        std::cout << "started   copy_test_device_template dev dev" << std::endl;
+    
+	copy_test_device_template<DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, grid_size, base + "hbm_ddr/" + end);
+        std::cout << "done  run_copy_tests_device dev host" << std::endl;
+
 }
 
 // ---------------- HOST TEMPLATES --------------------------------
@@ -659,10 +675,10 @@ void memcpy_test_host_template(size_t n_iter, size_t n_bytes, size_t n_threads, 
 
 // ---------------- HOST TESTS --------------------------------
 void run_write_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
-    write_test_host_template<HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr/" + end);
-    write_test_host_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm/" + end);
-    write_test_host_template<REMOTE_HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr_remote/" + end);
-    write_test_host_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_remote/" + end);
+    //write_test_host_template<HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr/" + end); //-----------------------------------------------------------to thelw kai ayto, apla to exw hdh kanei!!!!
+    write_test_host_template<DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm/" + end); //-------------------------------------------------------to thelw kai ayto, apla to exw hdh kanei!!!!
+    //write_test_host_template<REMOTE_HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr_remote/" + end);
+    //write_test_host_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_remote/" + end);
     // write_test_host_template<FAR_HOST_MEM>(n_iter, n_bytes, n_threads, 72, base + "ddr_far/" + end);
     // write_test_host_template<FAR_DEVICE_MEM>(n_iter, n_bytes, n_threads, 72, base + "hbm_far/" + end);
 }
@@ -675,8 +691,8 @@ void run_memset_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std:
 void run_read_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
     read_test_host_template<HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr/" + end);
     read_test_host_template<DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm/" + end);
-    read_test_host_template<REMOTE_HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr_remote/" + end);
-    read_test_host_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_remote/" + end);
+    //read_test_host_template<REMOTE_HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr_remote/" + end);
+    //read_test_host_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_remote/" + end);
 }
 
 void run_copy_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
@@ -686,12 +702,12 @@ void run_copy_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::s
     copy_test_host_template<DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_ddr/" + end);
 }
 
-// void run_memcpy_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
-//     memcpy_test_host_template<HOST_MEM, HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr_ddr/" + end);
-//     memcpy_test_host_template<HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "ddr_hbm/" + end);
-//     memcpy_test_host_template<DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_hbm/" + end);
-//     memcpy_test_host_template<DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, n_threads, 0, base + "hbm_ddr/" + end);
-// }
+ void run_memcpy_tests_host(size_t n_iter, size_t n_bytes, size_t n_threads, std::string base, std::string end) {
+     memcpy_test_host_template<HOST_MEM, HOST_MEM>(n_iter, n_bytes, n_threads, 0, HOST_ID, WRITE, HOST_ID, WRITE, base + "ddr_ddr/" + end);
+     memcpy_test_host_template<HOST_MEM, DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, HOST_ID, WRITE,DEVICE_ID, WRITE, base + "ddr_hbm/" + end);
+     memcpy_test_host_template<DEVICE_MEM, DEVICE_MEM>(n_iter, n_bytes, n_threads, 0, DEVICE_ID, WRITE, DEVICE_ID, WRITE, base + "hbm_hbm/" + end);
+     memcpy_test_host_template<DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, n_threads, 0, DEVICE_ID, WRITE, HOST_ID, WRITE, base + "hbm_ddr/" + end);
+ }
 
 
 // ---------------- CUDAMEMCPY TESTS --------------------------------
@@ -763,250 +779,270 @@ void host_copy_template(size_t n_iter, size_t n_bytes, std::string name) {
 void run_cuda_memcpy_heatmap_tests() {
     size_t n_iter = 10;
     size_t n_bytes = 1UL << 33;
+    std::cout << "BEGIN HEATMAP TESTS" << std::endl;
+    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/CMC_CMC");
+    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/CMC_CMH");
+    cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/CMC_MMH");
+    cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/CMC_MMD");
+    cuda_memcpy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMC_MGH");
+    cuda_memcpy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMC_MGD");
+    //cuda_memcpy_template<CudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/CMC_CMR");
+    //cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap1/CMC_MDR");
+    //cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/CMC_MHR");
+    std::cout << "DONE WITH FIRST SET" << std::endl;
 
-    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/CMC_CMC");
-    cuda_memcpy_template<CudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMC_CMH");
-    cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMC_MMH");
-    cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMC_MMD");
-    cuda_memcpy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMC_MGH");
-    cuda_memcpy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMC_MGD");
-    cuda_memcpy_template<CudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMC_CMR");
-    cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMC_MDR");
-    cuda_memcpy_template<CudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMC_MHR");
+    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/CMH_CMC");
+    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/CMH_CMH");
+    cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/CMH_MMH");
+    cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/CMH_MMD");
+    cuda_memcpy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMH_MGH");
+    cuda_memcpy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMH_MGD");
+    //cuda_memcpy_template<CudaMallocHostDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/CMH_CMR");
+    //cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMH_MDR");
+    //cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMH_MHR");
 
-    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/CMH_CMC");
-    cuda_memcpy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMH_CMH");
-    cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMH_MMH");
-    cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMH_MMD");
-    cuda_memcpy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMH_MGH");
-    cuda_memcpy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMH_MGD");
-    cuda_memcpy_template<CudaMallocHostDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMH_CMR");
-    cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMH_MDR");
-    cuda_memcpy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMH_MHR");
+    cuda_memcpy_template<NumaDataFactory<0>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MMH_CMC");
+    cuda_memcpy_template<NumaDataFactory<0>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MMH_CMH");
+    cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MMH_MMH");
+    cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MMH_MMD");
+    cuda_memcpy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMH_MGH");
+    cuda_memcpy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMH_MGD");
+    //cuda_memcpy_template<NumaDataFactory<0>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/MMH_CMR");
+    //cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMH_MDR");
+    //cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMH_MHR");
 
-    cuda_memcpy_template<NumaDataFactory<0>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MMH_CMC");
-    cuda_memcpy_template<NumaDataFactory<0>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MMH_CMH");
-    cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MMH_MMH");
-    cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MMH_MMD");
-    cuda_memcpy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMH_MGH");
-    cuda_memcpy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMH_MGD");
-    cuda_memcpy_template<NumaDataFactory<0>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MMH_CMR");
-    cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMH_MDR");
-    cuda_memcpy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMH_MHR");
+    cuda_memcpy_template<NumaDataFactory<1>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MMD_CMC");
+    cuda_memcpy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MMD_CMH");
+    cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MMD_MMH");
+    cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MMD_MMD");
+    cuda_memcpy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMD_MGH");
+    cuda_memcpy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMD_MGD");
+    //cuda_memcpy_template<NumaDataFactory<1>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/MMD_CMR");
+    //cuda_memcpy_template<NumaDataFactory<4>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMD_MDR");
+    //cuda_memcpy_template<NumaDataFactory<4>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMD_MHR");
 
-    cuda_memcpy_template<NumaDataFactory<4>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MMD_CMC");
-    cuda_memcpy_template<NumaDataFactory<4>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MMD_CMH");
-    cuda_memcpy_template<NumaDataFactory<4>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MMD_MMH");
-    cuda_memcpy_template<NumaDataFactory<4>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MMD_MMD");
-    cuda_memcpy_template<NumaDataFactory<4>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMD_MGH");
-    cuda_memcpy_template<NumaDataFactory<4>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMD_MGD");
-    cuda_memcpy_template<NumaDataFactory<4>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MMD_CMR");
-    cuda_memcpy_template<NumaDataFactory<4>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMD_MDR");
-    cuda_memcpy_template<NumaDataFactory<4>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMD_MHR");
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MGH_CMC");
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MGH_CMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MGH_MMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MGH_MMD");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGH_MGH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGH_MGD");
+    //cuda_memcpy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/MGH_CMR");
+    //cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGH_MDR");
+    //cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGH_MHR");
 
-    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MGH_CMC");
-    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MGH_CMH");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MGH_MMH");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MGH_MMD");
-    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGH_MGH");
-    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGH_MGD");
-    cuda_memcpy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MGH_CMR");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGH_MDR");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGH_MHR");
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MGD_CMC");
+    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MGD_CMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MGD_MMH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MGD_MMD");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGD_MGH");
+    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGD_MGD");
+    //cuda_memcpy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/MGD_CMR");
+    //cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGD_MDR");
+    //cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGD_MHR");
 
-    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MGD_CMC");
-    cuda_memcpy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MGD_CMH");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MGD_MMH");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MGD_MMD");
-    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGD_MGH");
-    cuda_memcpy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGD_MGD");
-    cuda_memcpy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MGD_CMR");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGD_MDR");
-    cuda_memcpy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGD_MHR");
+    //-----------------------------------------------------------------------------------------------------------------REMOTE----------------------------------------------------------------------------
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/CMR_CMC");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/CMR_CMH");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/CMR_MMH");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/CMR_MMD");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMR_MGH");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMR_MGD");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/CMR_CMR");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMR_MDR");
+    //cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMR_MHR");
 
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/CMR_CMC");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMR_CMH");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMR_MMH");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMR_MMD");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMR_MGH");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMR_MGD");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMR_CMR");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMR_MDR");
-    cuda_memcpy_template<RemoteCudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMR_MHR");
-
-    cuda_memcpy_template<NumaDataFactory<12>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MDR_CMC");
-    cuda_memcpy_template<NumaDataFactory<12>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MDR_CMH");
-    cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MDR_MMH");
-    cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MDR_MMD");
-    cuda_memcpy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGH");
-    cuda_memcpy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGD");
-    cuda_memcpy_template<NumaDataFactory<12>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MDR_CMR");
-    cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MDR_MDR");
-    cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MDR_MHR");
-
-    cuda_memcpy_template<NumaDataFactory<1>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MHR_CMC");
-    cuda_memcpy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MHR_CMH");
-    cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MHR_MMH");
-    cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MHR_MMD");
-    cuda_memcpy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGH");
-    cuda_memcpy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGD");
-    cuda_memcpy_template<NumaDataFactory<1>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MHR_CMR");
-    cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MHR_MDR");
-    cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MHR_MHR");
+    //cuda_memcpy_template<NumaDataFactory<12>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MDR_CMC");
+    //cuda_memcpy_template<NumaDataFactory<12>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MDR_CMH");
+    //cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MDR_MMH");
+    /*//cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MDR_MMD");
+    //cuda_memcpy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGH");
+    //cuda_memcpy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGD");
+    //cuda_memcpy_template<NumaDataFactory<12>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MDR_CMR");
+    //cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MDR_MDR");
+    //cuda_memcpy_template<NumaDataFactory<12>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MDR_MHR");
+    */
+    //cuda_memcpy_template<NumaDataFactory<1>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MHR_CMC");
+    //cuda_memcpy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MHR_CMH");
+    //cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MHR_MMH");
+    //cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MHR_MMD");
+    //cuda_memcpy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGH");
+    //cuda_memcpy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGD");
+    //cuda_memcpy_template<NumaDataFactory<1>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MHR_CMR");
+    //cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MHR_MDR");
+    //cuda_memcpy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MHR_MHR");
 }
 
 void run_device_copy_heatmap_tests() {
     size_t n_iter = 10;
     size_t n_bytes = 1UL << 33;
+    std::cout << "began run_device_copy_heatmap_tests()" << std::endl;
+    device_copy_template<CudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/CMC_CMC");
+    device_copy_template<CudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/CMC_CMH");
+    device_copy_template<CudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/CMC_MMH");
+        std::cout << "1" << std::endl;
 
-    device_copy_template<CudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/CMC_CMC");
-    device_copy_template<CudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMC_CMH");
-    device_copy_template<CudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMC_MMH");
-    device_copy_template<CudaMallocDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMC_MMD");
-    device_copy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMC_MGH");
-    device_copy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMC_MGD");
-    device_copy_template<CudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMC_CMR");
-    device_copy_template<CudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMC_MDR");
-    device_copy_template<CudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMC_MHR");
+    device_copy_template<CudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/CMC_MMD");
+    device_copy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMC_MGH");
+    device_copy_template<CudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMC_MGD");
+    //device_copy_template<CudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMC_CMR");
+    //device_copy_template<CudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMC_MDR");
+    //device_copy_template<CudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMC_MHR");
+        std::cout << "2" << std::endl;
 
-    device_copy_template<CudaMallocHostDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/CMH_CMC");
-    device_copy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMH_CMH");
-    device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMH_MMH");
-    device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMH_MMD");
-    device_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMH_MGH");
-    device_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMH_MGD");
-    device_copy_template<CudaMallocHostDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMH_CMR");
-    device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMH_MDR");
-    device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMH_MHR");
+    device_copy_template<CudaMallocHostDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/CMH_CMC");
+    device_copy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/CMH_CMH");
+    device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/CMH_MMH");
+    device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/CMH_MMD");
+    device_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMH_MGH");
+    device_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMH_MGD");
+    //device_copy_template<CudaMallocHostDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMH_CMR");
+    //device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMH_MDR");
+    //device_copy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMH_MHR");
+        std::cout << "3" << std::endl;
 
-    device_copy_template<NumaDataFactory<0>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MMH_CMC");
-    device_copy_template<NumaDataFactory<0>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MMH_CMH");
-    device_copy_template<NumaDataFactory<0>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MMH_MMH");
-    device_copy_template<NumaDataFactory<0>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MMH_MMD");
-    device_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMH_MGH");
-    device_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMH_MGD");
-    device_copy_template<NumaDataFactory<0>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MMH_CMR");
-    device_copy_template<NumaDataFactory<0>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMH_MDR");
-    device_copy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMH_MHR");
+    device_copy_template<NumaDataFactory<0>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MMH_CMC");
+    device_copy_template<NumaDataFactory<0>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MMH_CMH");
+    device_copy_template<NumaDataFactory<0>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MMH_MMH");
+    device_copy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MMH_MMD");
+    device_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMH_MGH");
+    device_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMH_MGD");
+    //device_copy_template<NumaDataFactory<0>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap1/MMH_CMR");
+    //device_copy_template<NumaDataFactory<0>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap1/MMH_MDR");
+    //device_copy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MMH_MHR");
+        std::cout << "4" << std::endl;
 
-    device_copy_template<NumaDataFactory<4>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MMD_CMC");
-    device_copy_template<NumaDataFactory<4>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MMD_CMH");
-    device_copy_template<NumaDataFactory<4>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MMD_MMH");
-    device_copy_template<NumaDataFactory<4>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MMD_MMD");
-    device_copy_template<NumaDataFactory<4>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMD_MGH");
-    device_copy_template<NumaDataFactory<4>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMD_MGD");
-    device_copy_template<NumaDataFactory<4>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MMD_CMR");
-    device_copy_template<NumaDataFactory<4>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMD_MDR");
-    device_copy_template<NumaDataFactory<4>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMD_MHR");
+    device_copy_template<NumaDataFactory<1>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MMD_CMC");
+    device_copy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MMD_CMH");
+    device_copy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MMD_MMH");
+    device_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MMD_MMD");
+    device_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMD_MGH");
+    device_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMD_MGD");
+    //device_copy_template<NumaDataFactory<1>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MMD_CMR");
+    //device_copy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMD_MDR");
+    //device_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMD_MHR");
 
-    device_copy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MGH_CMC");
-    device_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MGH_CMH");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MGH_MMH");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MGH_MMD");
-    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGH_MGH");
-    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGH_MGD");
-    device_copy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MGH_CMR");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGH_MDR");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGH_MHR");
+    device_copy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MGH_CMC");
+    device_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MGH_CMH");
+    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MGH_MMH");
+    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MGH_MMD");
+    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGH_MGH");
+    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGH_MGD");
+    //device_copy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MGH_CMR");
+    //device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGH_MDR");
+    //device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGH_MHR");
+        std::cout << "5" << std::endl;
 
-    device_copy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MGD_CMC");
-    device_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MGD_CMH");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MGD_MMH");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MGD_MMD");
-    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGD_MGH");
-    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGD_MGD");
-    device_copy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MGD_CMR");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGD_MDR");
-    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGD_MHR");
+    device_copy_template<ManagedMemoryDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap1/MGD_CMC");
+    device_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MGD_CMH");
+    device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MGD_MMH");
+    //device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MGD_MMD");
+    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGD_MGH");
+    device_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGD_MGD");
+    //device_copy_template<ManagedMemoryDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MGD_CMR");
+    //device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGD_MDR");
+    //device_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGD_MHR");
+        std::cout << "6" << std::endl;
 
-    device_copy_template<RemoteCudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/CMR_CMC");
-    device_copy_template<RemoteCudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMR_CMH");
-    device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMR_MMH");
-    device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMR_MMD");
-    device_copy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMR_MGH");
-    device_copy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMR_MGD");
-    device_copy_template<RemoteCudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMR_CMR");
-    device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMR_MDR");
-    device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMR_MHR");
+    //device_copy_template<RemoteCudaMallocDataFactory, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/CMR_CMC");
+    //device_copy_template<RemoteCudaMallocDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMR_CMH");
+    //device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMR_MMH");
+    //device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMR_MMD");
+    //device_copy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMR_MGH");
+    //device_copy_template<RemoteCudaMallocDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMR_MGD");
+    //device_copy_template<RemoteCudaMallocDataFactory, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/CMR_CMR");
+    //device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMR_MDR");
+    //device_copy_template<RemoteCudaMallocDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMR_MHR");
+        std::cout << "7" << std::endl;
 
-    device_copy_template<NumaDataFactory<12>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MDR_CMC");
-    device_copy_template<NumaDataFactory<12>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MDR_CMH");
-    device_copy_template<NumaDataFactory<12>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MDR_MMH");
-    device_copy_template<NumaDataFactory<12>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MDR_MMD");
-    device_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGH");
-    device_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGD");
-    device_copy_template<NumaDataFactory<12>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MDR_CMR");
-    device_copy_template<NumaDataFactory<12>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MDR_MDR");
-    device_copy_template<NumaDataFactory<12>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MDR_MHR");
+    /*
+    //device_copy_template<NumaDataFactory<12>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MDR_CMC");
+    //device_copy_template<NumaDataFactory<12>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MDR_CMH");
+    //device_copy_template<NumaDataFactory<12>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MDR_MMH");
+    //device_copy_template<NumaDataFactory<12>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MDR_MMD");
+    //device_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGH");
+    //device_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGD");
+    //device_copy_template<NumaDataFactory<12>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MDR_CMR");
+    //device_copy_template<NumaDataFactory<12>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MDR_MDR");
+    //device_copy_template<NumaDataFactory<12>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MDR_MHR");
+    */
+    //device_copy_template<NumaDataFactory<1>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MHR_CMC");
+    //device_copy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MHR_CMH");
+    //device_copy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MHR_MMH");
+    //device_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MHR_MMD");
+    //device_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGH");
+    //device_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGD");
+    //device_copy_template<NumaDataFactory<1>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MHR_CMR");
+    //device_copy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MHR_MDR");
+    //device_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MHR_MHR");
+        std::cout << "8" << std::endl;
 
-    device_copy_template<NumaDataFactory<1>, CudaMallocDataFactory>      (n_iter, n_bytes, "heatmap/MHR_CMC");
-    device_copy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MHR_CMH");
-    device_copy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MHR_MMH");
-    device_copy_template<NumaDataFactory<1>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MHR_MMD");
-    device_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGH");
-    device_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGD");
-    device_copy_template<NumaDataFactory<1>, RemoteCudaMallocDataFactory>(n_iter, n_bytes, "heatmap/MHR_CMR");
-    device_copy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MHR_MDR");
-    device_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MHR_MHR");
 }
 
 void run_host_copy_heatmap_tests() {
     size_t n_iter = 10;
     size_t n_bytes = CEIL(1UL << 33, 72) * 72;
+        std::cout << "1" << std::endl;
 
-    host_copy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/CMH_CMH");
-    host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/CMH_MMH");
-    host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/CMH_MMD");
-    host_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMH_MGH");
-    host_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/CMH_MGD");
-    host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMH_MDR");
-    host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMH_MHR");
+    host_copy_template<CudaMallocHostDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/CMH_CMH");
+    host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/CMH_MMH");
+    host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/CMH_MMD");
+    host_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMH_MGH");
+    host_copy_template<CudaMallocHostDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/CMH_MGD");
+    //host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/CMH_MDR");
+    //host_copy_template<CudaMallocHostDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/CMH_MHR");
+        std::cout << "2" << std::endl;
 
-    host_copy_template<NumaDataFactory<0>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MMH_CMH");
-    host_copy_template<NumaDataFactory<0>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MMH_MMH");
-    host_copy_template<NumaDataFactory<0>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MMH_MMD");
-    host_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMH_MGH");
-    host_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMH_MGD");
-    host_copy_template<NumaDataFactory<0>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMH_MDR");
-    host_copy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMH_MHR");
+    host_copy_template<NumaDataFactory<0>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MMH_CMH");
+    host_copy_template<NumaDataFactory<0>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MMH_MMH");
+    host_copy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MMH_MMD");
+    host_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMH_MGH");
+    host_copy_template<NumaDataFactory<0>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMH_MGD");
+    //host_copy_template<NumaDataFactory<0>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMH_MDR");
+    //host_copy_template<NumaDataFactory<0>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMH_MHR");
+        std::cout << "3" << std::endl;
 
-    host_copy_template<NumaDataFactory<4>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MMD_CMH");
-    host_copy_template<NumaDataFactory<4>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MMD_MMH");
-    host_copy_template<NumaDataFactory<4>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MMD_MMD");
-    host_copy_template<NumaDataFactory<4>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMD_MGH");
-    host_copy_template<NumaDataFactory<4>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MMD_MGD");
-    host_copy_template<NumaDataFactory<4>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMD_MDR");
-    host_copy_template<NumaDataFactory<4>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMD_MHR");
+    host_copy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MMD_CMH");
+    host_copy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MMD_MMH");
+    host_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MMD_MMD");
+    host_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMD_MGH");
+    host_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MMD_MGD");
+    //host_copy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MMD_MDR");
+    //host_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MMD_MHR");
 
-    host_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MGH_CMH");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MGH_MMH");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MGH_MMD");
-    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGH_MGH");
-    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGH_MGD");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGH_MDR");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGH_MHR");
+    host_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MGH_CMH");
+    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MGH_MMH");
+    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MGH_MMD");
+    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGH_MGH");
+    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGH_MGD");
+    //host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGH_MDR");
+    //host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGH_MHR");
+        std::cout << "4" << std::endl;
 
-    host_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MGD_CMH");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MGD_MMH");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MGD_MMD");
-    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGD_MGH");
-    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MGD_MGD");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGD_MDR");
-    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGD_MHR");
+    host_copy_template<ManagedMemoryDataFactory, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap1/MGD_CMH");
+    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap1/MGD_MMH");
+    host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap1/MGD_MMD");
+    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGD_MGH");
+    host_copy_template<ManagedMemoryDataFactory, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap1/MGD_MGD");
+    //host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MGD_MDR");
+    //host_copy_template<ManagedMemoryDataFactory, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MGD_MHR");
+        std::cout << "5" << std::endl;
 
-    host_copy_template<NumaDataFactory<12>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MDR_CMH");
-    host_copy_template<NumaDataFactory<12>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MDR_MMH");
-    host_copy_template<NumaDataFactory<12>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MDR_MMD");
-    host_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGH");
-    host_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGD");
-    host_copy_template<NumaDataFactory<12>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MDR_MDR");
-    host_copy_template<NumaDataFactory<12>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MDR_MHR");
+    //host_copy_template<NumaDataFactory<12>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MDR_CMH");
+    //host_copy_template<NumaDataFactory<12>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MDR_MMH");
+    //host_copy_template<NumaDataFactory<12>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MDR_MMD");
+    //host_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGH");
+    //host_copy_template<NumaDataFactory<12>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MDR_MGD");
+    //host_copy_template<NumaDataFactory<12>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MDR_MDR");
+    //host_copy_template<NumaDataFactory<12>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MDR_MHR");
 
-    host_copy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MHR_CMH");
-    host_copy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MHR_MMH");
-    host_copy_template<NumaDataFactory<1>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MHR_MMD");
-    host_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGH");
-    host_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGD");
-    host_copy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MHR_MDR");
-    host_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MHR_MHR");
+    //host_copy_template<NumaDataFactory<1>, CudaMallocHostDataFactory>  (n_iter, n_bytes, "heatmap/MHR_CMH");
+    //host_copy_template<NumaDataFactory<1>, NumaDataFactory<0>>            (n_iter, n_bytes, "heatmap/MHR_MMH");
+    //host_copy_template<NumaDataFactory<1>, NumaDataFactory<4>>            (n_iter, n_bytes, "heatmap/MHR_MMD");
+    //host_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGH");
+    //host_copy_template<NumaDataFactory<1>, ManagedMemoryDataFactory>   (n_iter, n_bytes, "heatmap/MHR_MGD");
+    //host_copy_template<NumaDataFactory<1>, NumaDataFactory<12>>            (n_iter, n_bytes, "heatmap/MHR_MDR");
+    //host_copy_template<NumaDataFactory<1>, NumaDataFactory<1>>            (n_iter, n_bytes, "heatmap/MHR_MHR");
+        std::cout << "6" << std::endl;
+
 }

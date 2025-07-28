@@ -185,72 +185,121 @@ void run_ping_pong_benchmarks(size_t n_iter) {
     double times[n_iter];
     std::string dir;
     if constexpr (std::is_same<ALLOC, HOST_MEM>::value) {
-        dir = "0";
+    	dir = "host_mem";
     } else {
-        dir = "4";
+    	dir = "device_mem";
     }
+
+    
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = host_ping_host_pong_benchmark<ALLOC>(1, 2);
+	std::cout << times[iter] << std::endl;
     }
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host0_host0");
-    for (size_t iter = 0; iter < n_iter; ++iter) {
-        times[iter] = host_ping_host_pong_benchmark<ALLOC>(1, 72);
-    }
-    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host0_host1");
-    for (size_t iter = 0; iter < n_iter; ++iter) {
-        times[iter] = host_ping_host_pong_benchmark<ALLOC>(72, 73);
-    }
-    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host1_host1");
-    for (size_t iter = 0; iter < n_iter; ++iter) {
-        times[iter] = host_ping_host_pong_benchmark<ALLOC>(72, 144);
-    }
-    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host1_host2");
+        std::cout << "3" << std::endl;
+
+    //for (size_t iter = 0; iter < n_iter; ++iter) {
+    //    times[iter] = host_ping_host_pong_benchmark<ALLOC>(1, 72);
+    //}
+    //  std::cout << "85" << std::endl;
+
+    //millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host0_host1");
+    //std::cout << "86" << std::endl;
+
+    //for (size_t iter = 0; iter < n_iter; ++iter) {
+    //    times[iter] = host_ping_host_pong_benchmark<ALLOC>(72, 73);
+    // }
+    //    std::cout << "87" << std::endl;
+
+    //millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host1_host1");
+    //std::cout << "88" << std::endl;
+
+    //for (size_t iter = 0; iter < n_iter; ++iter) {
+    //    times[iter] = host_ping_host_pong_benchmark<ALLOC>(72, 144);
+    //}
+    //std::cout << "89" << std::endl;
+
+    //millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host1_host2");
+    //std::cout << "90" << std::endl;
+
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = host_ping_device_pong_benchmark<ALLOC>(1, 0);
     }
+    std::cout << "91" << std::endl;
+
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host0_device0");
+    std::cout << "92" << std::endl;
+
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = device_ping_host_pong_benchmark<ALLOC>(1, 0);
     }
+    std::cout << "93" << std::endl;
+
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device0_host0");
+    std::cout << "94" << std::endl;
+
+    /*
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = host_ping_device_pong_benchmark<ALLOC>(1, 1);
     }
+        std::cout << "95" << std::endl;
+
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host0_device1");
-    for (size_t iter = 0; iter < n_iter; ++iter) {
-        times[iter] = host_ping_device_pong_benchmark<ALLOC>(72, 2);
+    std::cout << "96" << std::endl;
+	*/
+    
+    /*for (size_t iter = 0; iter < n_iter; ++iter) {
+       times[iter] = host_ping_device_pong_benchmark<ALLOC>(72, 2);
     }
+    std::cout << "97" << std::endl;
+
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host1_device2");
+    std::cout << "98" << std::endl;
+    
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = host_ping_device_pong_benchmark<ALLOC>(72, 1);
     }
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/host1_device1");
+    */
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = device_ping_device_pong_benchmark<ALLOC>(0, 0);
     }
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device0_device0");
-    for (size_t iter = 0; iter < n_iter; ++iter) {
+    
+    /*for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = device_ping_device_pong_benchmark<ALLOC>(0, 1);
     }
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device0_device1");
+    */
+
+    /*
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = device_ping_device_pong_benchmark<ALLOC>(1, 2);
     }
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device1_device2");
+    */
+
+    /*
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = device_ping_device_pong_benchmark<ALLOC>(1, 1);
     }
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device1_device1");
+    */
+    /*
     for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = device_ping_host_pong_benchmark<ALLOC>(72, 0);
     }
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device0_host1");
-    for (size_t iter = 0; iter < n_iter; ++iter) {
-        times[iter] = device_ping_host_pong_benchmark<ALLOC>(144, 1);
-    }
-    millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device1_host2");
-    for (size_t iter = 0; iter < n_iter; ++iter) {
+    */
+    //for (size_t iter = 0; iter < n_iter; ++iter) {
+    //    times[iter] = device_ping_host_pong_benchmark<ALLOC>(144, 1);
+    //}
+    //millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device1_host2");
+    /*for (size_t iter = 0; iter < n_iter; ++iter) {
         times[iter] = device_ping_host_pong_benchmark<ALLOC>(72, 1);
     }
+    std::cout << "99" << std::endl;
     millisecond_times_to_latency_ns_file(times, n_iter, 10000, "results/pingpong/" + dir + "/device1_host1");
+    std::cout << "100" << std::endl;
+	*/
 }

@@ -157,20 +157,20 @@ void openblas_gemm_template(size_t n_iter, size_t n_bytes, std::string name) {
 void run_openblas_gemm_tests(size_t n_iter, size_t n_bytes) {
     openblas_gemm_template<HOST_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_ddr_ddr/" + std::to_string(n_bytes));
     openblas_gemm_template<HOST_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_hbm_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<HOST_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_ddr_remote_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<HOST_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_hbm_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<HOST_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_ddr_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<HOST_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_hbm_remote_ddr/" + std::to_string(n_bytes));
     openblas_gemm_template<DEVICE_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_ddr_ddr/" + std::to_string(n_bytes));
     openblas_gemm_template<DEVICE_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_hbm_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<DEVICE_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_ddr_remote_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<DEVICE_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_hbm_remote_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_ddr_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_hbm_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_ddr_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_hbm_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
-    openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<DEVICE_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_ddr_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<DEVICE_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_hbm_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_HOST_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_ddr_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_HOST_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_hbm_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_HOST_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "ddr_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_DEVICE_MEM, HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_ddr_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_DEVICE_MEM, DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_hbm_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_HOST_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_ddr_remote_ddr/" + std::to_string(n_bytes));
+    //openblas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_DEVICE_MEM, HOST_MEM>(n_iter, n_bytes, "hbm_remote_hbm_remote_ddr/" + std::to_string(n_bytes));
 }
 #endif
 
@@ -178,20 +178,20 @@ template <typename T>
 void run_cublas_gemm_tests(size_t n_iter, size_t n_bytes) {
     cublas_gemm_template<HOST_MEM, HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_ddr_hbm/" + std::to_string(n_bytes));
     cublas_gemm_template<HOST_MEM, DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_hbm_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<HOST_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_ddr_remote_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<HOST_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_hbm_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<HOST_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_ddr_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<HOST_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_hbm_remote_hbm/" + std::to_string(n_bytes));
     cublas_gemm_template<DEVICE_MEM, HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_ddr_hbm/" + std::to_string(n_bytes));
     cublas_gemm_template<DEVICE_MEM, DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_hbm_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<DEVICE_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_ddr_remote_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<DEVICE_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_hbm_remote_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_HOST_MEM, HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_ddr_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_HOST_MEM, DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_hbm_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_HOST_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_HOST_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_DEVICE_MEM, HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_ddr_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_DEVICE_MEM, DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_hbm_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
-    cublas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<DEVICE_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_ddr_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<DEVICE_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_hbm_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_HOST_MEM, HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_ddr_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_HOST_MEM, DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_hbm_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_HOST_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_HOST_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "ddr_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_DEVICE_MEM, HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_ddr_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_DEVICE_MEM, DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_hbm_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_HOST_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_ddr_remote_hbm/" + std::to_string(n_bytes));
+    //cublas_gemm_template<REMOTE_DEVICE_MEM, REMOTE_DEVICE_MEM, DEVICE_MEM, T>(n_iter, n_bytes, "hbm_remote_hbm_remote_hbm/" + std::to_string(n_bytes));
 }
 
 
@@ -349,10 +349,10 @@ void thrust_reduction_template(size_t n_iter, size_t n_bytes, const Policy &exec
 void run_thrust_reduction_benchmarks(size_t n_iter, size_t n_bytes) {
     thrust_reduction_template<HOST_MEM>(n_iter, n_bytes, thrust::host, "host/ddr/" + std::to_string(n_bytes));
     thrust_reduction_template<DEVICE_MEM>(n_iter, n_bytes, thrust::host, "host/hbm/" + std::to_string(n_bytes));
-    thrust_reduction_template<REMOTE_HOST_MEM>(n_iter, n_bytes, thrust::host, "host/ddr_remote/" + std::to_string(n_bytes));
-    thrust_reduction_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, thrust::host, "host/hbm_remote/" + std::to_string(n_bytes));
+    //thrust_reduction_template<REMOTE_HOST_MEM>(n_iter, n_bytes, thrust::host, "host/ddr_remote/" + std::to_string(n_bytes));
+    //thrust_reduction_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, thrust::host, "host/hbm_remote/" + std::to_string(n_bytes));
     thrust_reduction_template<HOST_MEM>(n_iter, n_bytes, thrust::device, "device/ddr/" + std::to_string(n_bytes));
     thrust_reduction_template<DEVICE_MEM>(n_iter, n_bytes, thrust::device, "device/hbm/" + std::to_string(n_bytes));
-    thrust_reduction_template<REMOTE_HOST_MEM>(n_iter, n_bytes, thrust::device, "device/ddr_remote/" + std::to_string(n_bytes));
-    thrust_reduction_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, thrust::device, "device/hbm_remote/" + std::to_string(n_bytes));
+    //thrust_reduction_template<REMOTE_HOST_MEM>(n_iter, n_bytes, thrust::device, "device/ddr_remote/" + std::to_string(n_bytes));
+    //thrust_reduction_template<REMOTE_DEVICE_MEM>(n_iter, n_bytes, thrust::device, "device/hbm_remote/" + std::to_string(n_bytes));
 }

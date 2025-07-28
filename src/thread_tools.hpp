@@ -6,7 +6,7 @@
 #include "measurement.hpp"
 #include "constants.hpp"
 
-#define NUM_THREADS 1
+#define NUM_THREADS 72
 
 constexpr size_t HOST_ID = (size_t) 0;
 constexpr size_t DEVICE_ID = (size_t) -1;
@@ -35,8 +35,9 @@ double latency_function(uint8_t *in, size_t n_elem) {
     //                  "ldr %0, [%1];" : "=r" (in) : "r" ((uint8_t **) in) :);
     // }
     for (size_t i = 0; i < n_elem; ++i) {
-        in = (uint8_t *) *((uint64_t *) in);
-    }
+        in = (uint8_t *) *((uint64_t *) in); //take the value of in, that is a mem location of a uint8, pretend like it holds a mem location of a uint64 as value, take that uint 64 value, and pretend like it is a uint8 value, assign it to in
+					     //(uint64_t)* in: this treats the byte pointer in as a pointer to a 64-bit unsigned integer. This means it reads 8 bytes starting at the address pointed by in
+    } //this for loop is a pointer chase, where each 8-byte block at the current address holds the address of the next element
     uint64_t end = get_cpu_clock();
 
     return get_elapsed_milliseconds_clock(start, end);
@@ -63,6 +64,8 @@ double latency_write_function(uint8_t *in, size_t n_elem) {
                      "ldr %0, [%1];" 
                      "str x0, [%1, #8];" : "=r" (in) : "r" ((uint8_t **) in) :);
     }
+    //"str x0, [%1, #8];" : "=r" (in) : "r" ((uint8_t **) in) :):  stores the contents of register x0 into memory at the address given by the pointer in %1, plus an 8-byte offset
+    //in cast to a pointer to pointer to uint8_t, passed in a register
     uint64_t end = get_cpu_clock();
 
     return get_elapsed_milliseconds_clock(start, end);
@@ -98,10 +101,10 @@ struct thread_data {
     size_t n_iter;
 } __attribute__((aligned(128)));
 
-thread_data thread_array[NUM_THREADS];
+thread_data thread_array[NUM_THREADS]; //array of worker threads
 uint8_t cache_filler[(int) ((double)CPU_L3_CACHE * 2.1f)];
 
-__attribute__((noinline)) __host__ __device__ void dumb_copy(volatile uint8_t *source, volatile uint8_t *target, size_t size) {
+__attribute__((noinline)) __host__ __device__ void dumb_copy(volatile uint8_t *source, volatile uint8_t *target, size_t size) { //can be run both on host ad device, volatile:no compiler optimizations
     for (size_t i = 0; i < size; i += 64) {
         target[i] = source[i];
     }
@@ -114,18 +117,18 @@ void prepare_memory(ThreadCommand command, uint8_t *buffer, size_t size) {
             for (size_t i = 0; i < size; i += 64) {
                 asm volatile("ldr x0, [%0];"
                              "str x0, [%0]":: "r" (&buffer[i]) : "x0" );
-            }
+            } //load and store into the same address, read and write at cache line granularity
             break;
         }
         case READ: {
             for (size_t i = 0; i < size; i += 64) {
-                asm volatile("ldr x0, [%0]" :: "r" (&buffer[i]) : "x0" );
+                asm volatile("ldr x0, [%0]" :: "r" (&buffer[i]) : "x0" ); //load from memory location at &buffer[i]
             }
             break;
         }
         case INVALIDATE: {
             for (size_t i = 0; i < sizeof(cache_filler); i += 64) {
-                asm volatile("ldr x0, [%0]" :: "r" (&cache_filler[i]) : "x0", "memory");
+                asm volatile("ldr x0, [%0]" :: "r" (&cache_filler[i]) : "x0", "memory"); //evict data from cache by loading the bigger cache filler
             }
             break;
         }
@@ -149,7 +152,7 @@ __global__ void device_read_preparation_kernel(uint8_t *a, size_t size) {
         dummy[i%2] = a[i];
     }
 
-    if (tid == (size_t)-1) {
+    if (tid == (size_t)-1) { //this will never be true because tid is unsigned and non negative, so we use it so again the compiler doesnt optimize the reads and keep dummy[0] used, if i hadnt that the compiler would know that the dummy is not used therefore eliminated sompletely the writes during compilation
         printf("%u", dummy[0]);
     }
 }
@@ -174,22 +177,22 @@ void dispatch_command(size_t t_id, ThreadCommand command, uint8_t *buffer, size_
         if (t_id == REMOTE_DEVICE_ID) {
             cudaSetDevice(0);
         }
-    } else {
+    } else { //if this was called from a main cpu thread, the worker threads wait for work
         thread_data *cur = &thread_array[t_id];
         cur->command = command;
         cur->buffer = buffer;
         cur->second_buffer = second_buffer;
         cur->n_iter = n_iter;
         cur->size = size;
-        cur->rx_mutex.lock();
-        cur->tx_mutex.unlock(); // send command
-        cur->rx_mutex.lock(); // wait until thread is done
-        cur->rx_mutex.unlock();
+        cur->rx_mutex.lock(); //main thread, when the worker thread finishes its job and calls rx_mutex.unlock(), the main thread will be able to proceed (by unlocking the mutex it's currently waiting) 
+        cur->tx_mutex.unlock(); // send command from main to workers->tx from main to worker start working now, locked by thread when it starts working, and when started unlocked by main
+        cur->rx_mutex.lock(); // main waits until worker thread is done -> rx from workers to main i finished, locked by main, unlocked by workers:i finished working
+        cur->rx_mutex.unlock(); //pair the first lock
     }
 }
 
 uint64_t run_test(ThreadCommand test, size_t n_threads, size_t initial_thread, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems, uint64_t *end_times, bool skip_waiting=false) {
-    assert(n_threads + initial_thread <= NUM_THREADS);
+    //assert(n_threads + initial_thread <= NUM_THREADS);
     size_t n_cachelines = n_elems / 8; // 8 doubles per cacheline
     size_t per_thread_n_cachelines = n_cachelines / n_threads;
     // size_t remainder = n_cachelines % n_threads;
@@ -202,31 +205,36 @@ uint64_t run_test(ThreadCommand test, size_t n_threads, size_t initial_thread, u
         // cur->size = (per_thread_n_cachelines + (i < remainder ? 1 : 0)) * 8;
         cur->size = per_thread_n_cachelines * 8;
         cur->start_time = nominal_start_time;
-        buffer += cur->size * sizeof(double);
-        second_buffer += cur->size * sizeof(double);
+        buffer += cur->size * sizeof(double); //buffer moved forward for next thread
+        second_buffer += cur->size * sizeof(double); //buffer moved forward for next thread
     }
 
-    for (size_t i = 0; i < n_threads; ++i) {
+
+    for (size_t i = 0; i < n_threads; ++i) { //only from main
         thread_data *cur = &thread_array[i+initial_thread];
-        cur->rx_mutex.lock();
-        cur->tx_mutex.unlock(); // send command
+        cur->rx_mutex.lock(); //main thread locks the receive mutex, so it can later block waiting for the thread to signal completion
+        cur->tx_mutex.unlock(); // send command from main to worker start working now
     }
+
 
     if (!skip_waiting) {
+	std::cout << "num threads:" << n_threads << std::endl;
         for (size_t i = 0; i < n_threads; ++i) {
             thread_data *cur = &thread_array[i+initial_thread];
             cur->rx_mutex.lock(); // wait until thread is done
             cur->rx_mutex.unlock();
             end_times[i] = cur->end_time;
+
         }
+
     }
+    std::cout << "nominal start time:" << nominal_start_time << std::endl;
 
     return nominal_start_time;
 }
 
-double time_test(ThreadCommand test, size_t n_threads, size_t initial_thread, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems) {
+double time_test(ThreadCommand test, size_t n_threads, size_t initial_thread, uint8_t *buffer, uint8_t *second_buffer, size_t n_elems) { 
     uint64_t end_times[n_threads];
-
     uint64_t nominal_start_time = run_test(test, n_threads, initial_thread, buffer, second_buffer, n_elems, end_times);
 
     uint64_t max_end = 0;
@@ -241,12 +249,15 @@ double time_test(ThreadCommand test, size_t n_threads, size_t initial_thread, ui
 
 void run_clock_offset_test(size_t n_threads, size_t initial_thread) {
     uint64_t end_times[n_threads];
-
+    std::cout << "CLOCK OFFSET BEFORE" << std::endl;
     run_test(CLOCK_TEST, n_threads, initial_thread, nullptr, nullptr, 0, end_times);
+    std::cout << "CLOCK OFFSET AFTER" << std::endl;
 
     for (size_t i = 0; i < n_threads; ++i) {
         std::cout << end_times[i] << std::endl;
     }
+        std::cout << "CLOCK OFFSET END" << std::endl;
+
 }
 
 void invalidate_all(uint8_t *buffer, size_t size) {
@@ -263,7 +274,7 @@ uint64_t thread_write_function(uint64_t start_time, double *a, size_t n_elems) {
 
                     "stp x0, x1, [%0, #48];"
                     "stp x0, x1, [%0, #64]!;" :: "r" (a) : "x0", "x1");
-    }
+    } //store pair x0, x1 to memory locations offsets a+16, a+32, a+64
     return get_cpu_clock();
 }
 
@@ -313,8 +324,8 @@ uint64_t thread_copy_function(uint64_t start_time, double *a, double *b, size_t 
         // b[i + 6] = a[i + 6];
         // b[i + 7] = a[i + 7];
 
-        asm volatile("ldp x0, x1, [%0, #16];"
-                    "stp x0, x1, [%1, #16];"
+        asm volatile("ldp x0, x1, [%0, #16];" //load pair x0,x1 from a+16
+                    "stp x0, x1, [%1, #16];"  //store pair at b+16
                     "ldp x2, x3, [%0, #32];"
                     "stp x2, x3, [%1, #32];"
 
@@ -332,9 +343,9 @@ uint64_t thread_memcpy_function(uint64_t start_time, double *a, double *b, size_
     return get_cpu_clock();
 }
 
-void thread_function(thread_data *t_info) {
+void thread_function(thread_data *t_info) { //what worker threads will run!!!!!!
     for (;;) {
-        t_info->tx_mutex.lock(); // wait until main sends command
+        t_info->tx_mutex.lock(); // wait until main sends command, when main does unlock the tx_mutex, the worker thread get notified and immediately resumes execution after the lock() call
         switch (t_info->command) {
             case TERMINATE:
                 return;
@@ -397,17 +408,32 @@ void thread_function(thread_data *t_info) {
     }
 }
 
-void init_thread_array(int main_thread) {
-    assert(main_thread >= NUM_THREADS);
-    for (size_t i = 0; i < NUM_THREADS; ++i) {
+void init_thread_array(int main_thread) { 
+    //assert(main_thread >= NUM_THREADS);
+    for (size_t i = 0; i < NUM_THREADS; ++i) { //for loop for main thread
         thread_data *cur = &thread_array[i];
         cur->t_id = i;
+	std::cout << "INITIALLIZED cur tid" << cur->t_id << std::endl;
         cur->start_time = 0;
-        cur->tx_mutex.lock();
+        cur->tx_mutex.lock(); //lock tx mutex so worker thread will block on it at startup and wait for tx unlock = main-> worker "start working now"
+
+	// Spawn the worker thread running 'thread_function' with the thread_data pointer.
         cur->t = std::make_unique<std::thread>(thread_function, cur);
-        cpu_set_t cpuset;
+
+	//set cpu affinity to avoid migrations
+	cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
         CPU_SET(i, &cpuset); 
+	/*
+	cur->tx_mutex.lock():
+	You lock the mutex before starting the worker thread. This is critical because your worker thread starts by trying to lock() this same mutex, which causes it to block immediately. This prevents the worker from running commands before the main thread tells it to.
+
+	Thread creation:
+	Each worker thread runs thread_function with a pointer to its thread_data.
+
+	CPU affinity:
+	Each thread is pinned to a distinct CPU core to minimize context switching and maximize cache locality.
+	*/
 
         pthread_setaffinity_np(cur->t->native_handle(), sizeof(cpu_set_t), &cpuset);
         struct sched_param param;
@@ -416,14 +442,36 @@ void init_thread_array(int main_thread) {
     }
 }
 
+
 void terminate_threads() {
     printf("terminating...\n");
     fflush(stdout);
-    for (size_t i = 0; i < NUM_THREADS; ++i) {
+    for (size_t i = 0; i < NUM_THREADS; ++i) { //for each worker thread
         thread_data *cur = &thread_array[i];
+	std::cout << "thread:" << cur->t_id << std::endl;
+        cur->command = TERMINATE; //the main cur thread sets command to ternimate
+	    
+        cur->tx_mutex.unlock(); //tells worket thread to start job
+            
+	//cur->t->join(); //waits for worker thread to finish
+        if (cur->t && cur->t->joinable()) {
+		cur->t->join();
+		std::cout << "joined" << std::endl;
 
-        cur->command = TERMINATE;
-        cur->tx_mutex.unlock();
-        cur->t->join();
+	} else {
+    		std::cerr << "Thread not joinable or null for thread " << i << std::endl;
+	}
+
     }
+    std::cout << "DONE" << std::endl;
 }
+
+
+/*d (the thread running your program’s control logic) dispatches commands to worker threads.
+Each worker thread corresponds to one thread_data entry in thread_array and runs independently.
+The main thread controls each worker thread by:
+Setting command and parameters in that worker’s thread_data.
+Unlocking that worker’s tx_mutex to signal it to start processing.
+Waiting on the worker’s rx_mutex to know when the worker finished.
+So the relationship is one main thread controlling many worker threads — each worker thread listens on its own pair of mutexes (tx_mutex and rx_mutex), processing commands sequentially as the main thread unlocks its tx_mutex.
+*/
